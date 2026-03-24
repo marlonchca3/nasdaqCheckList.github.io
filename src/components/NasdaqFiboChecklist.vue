@@ -6,7 +6,8 @@
       <section class="hero-card">
         <div class="hero-top">
           <div>
-            <p class="eyebrow">Trading Workflow</p>
+            <p class="eyeb
+            +row">Trading Workflow</p>
             <h1>Nasdaq 5M Task Board</h1>
             <p class="hero-text">
               Organiza tus tareas de trading, análisis y ejecución con una interfaz profesional.
