@@ -152,7 +152,7 @@
       <div v-if="showCelebration" class="celebration-overlay">
         <div class="celebration-box">
           <div class="celebration-icon">🎉</div>
-          <h2>¡Excelente trabajo!</h2>
+          <h2>¡Ahora si puedes operar!</h2>
           <p>Completaste todas tus tareas de la sesión.</p>
         </div>
 
