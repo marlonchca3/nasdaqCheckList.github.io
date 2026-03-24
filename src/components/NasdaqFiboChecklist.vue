@@ -6,11 +6,10 @@
       <section class="hero-card">
         <div class="hero-top">
           <div>
-            <p class="eyeb
-            +row">Trading Workflow</p>
+            <p class="eyebrow">Trading Workflow</p>
             <h1>Nasdaq 5M Task Board</h1>
             <p class="hero-text">
-              Organiza tus tareas de trading, análisis y ejecución con una interfaz profesional.
+              Arrastra tus tareas para ponerlas primero o al final según prioridad.
             </p>
           </div>
 
@@ -48,7 +47,9 @@
           <div class="panel-header">
             <div>
               <h2>Task Manager</h2>
-              <p>Agrega, completa o elimina tareas. Todo se guarda automáticamente.</p>
+              <p>
+                Agrega tareas, arrástralas para reordenarlas y todo se guarda automáticamente.
+              </p>
             </div>
           </div>
 
@@ -68,26 +69,43 @@
             <p>Crea tu primera tarea para comenzar tu sesión de Nasdaq 5 minutos.</p>
           </div>
 
-          <div v-else class="task-list">
-            <article
-              v-for="task in tasks"
-              :key="task.id"
-              class="task-card"
-              :class="{ completed: task.done }"
-            >
-              <label class="task-left">
-                <input type="checkbox" v-model="task.done" />
-                <div class="task-content">
-                  <span class="task-text">{{ task.text }}</span>
-                  <small>{{ task.done ? 'Completada' : 'En espera' }}</small>
-                </div>
-              </label>
+          <draggable
+            v-else
+            v-model="tasks"
+            item-key="id"
+            handle=".drag-handle"
+            animation="220"
+            ghost-class="ghost-task"
+            chosen-class="chosen-task"
+            drag-class="drag-task"
+            class="task-list"
+          >
+            <template #item="{ element: task }">
+              <article class="task-card" :class="{ completed: task.done }">
+                <div class="task-left">
+                  <button
+                    class="drag-handle"
+                    type="button"
+                    title="Arrastrar tarea"
+                    aria-label="Arrastrar tarea"
+                  >
+                    ☰
+                  </button>
 
-              <button class="danger-btn" @click="removeTask(task.id)">
-                Eliminar
-              </button>
-            </article>
-          </div>
+                  <input type="checkbox" v-model="task.done" />
+
+                  <div class="task-content">
+                    <span class="task-text">{{ task.text }}</span>
+                    <small>{{ task.done ? 'Completada' : 'En espera' }}</small>
+                  </div>
+                </div>
+
+                <button class="danger-btn" @click="removeTask(task.id)">
+                  Eliminar
+                </button>
+              </article>
+            </template>
+          </draggable>
 
           <div v-if="tasks.length > 0" class="task-footer">
             <div class="progress-wrap">
@@ -118,12 +136,12 @@
           </div>
 
           <div class="mini-panel">
-            <h3>Enfoque Nasdaq 5M</h3>
+            <h3>Cómo usarlo</h3>
             <ul class="info-list">
-              <li>Prioriza claridad antes de velocidad.</li>
-              <li>Evita sobreoperar cuando no hay setup.</li>
-              <li>Marca solo tareas realmente ejecutables.</li>
-              <li>Mantén el tablero limpio antes de cada sesión.</li>
+              <li>Arrastra con el botón ☰.</li>
+              <li>Pon arriba lo más importante.</li>
+              <li>Deja abajo lo menos urgente.</li>
+              <li>El orden se guarda automáticamente.</li>
             </ul>
           </div>
 
@@ -152,7 +170,7 @@
       <div v-if="showCelebration" class="celebration-overlay">
         <div class="celebration-box">
           <div class="celebration-icon">🎉</div>
-          <h2>¡Ahora si puedes operar!</h2>
+          <h2>¡Excelente trabajo!</h2>
           <p>Completaste todas tus tareas de la sesión.</p>
         </div>
 
@@ -164,16 +182,19 @@
         <div class="confetti confetti-6"></div>
         <div class="confetti confetti-7"></div>
         <div class="confetti confetti-8"></div>
-        <div class="confetti confetti-9"></div>
-        <div class="confetti confetti-10"></div>
       </div>
     </transition>
   </div>
 </template>
 
 <script>
+import draggable from "vuedraggable";
+
 export default {
   name: "App",
+  components: {
+    draggable
+  },
   data() {
     return {
       newTask: "",
@@ -181,7 +202,8 @@ export default {
       showCelebration: false,
       celebrationPlayed: false,
       audioContext: null,
-      currentTime: ""
+      currentTime: "",
+      clockInterval: null
     };
   },
   computed: {
@@ -202,23 +224,31 @@ export default {
   watch: {
     tasks: {
       handler(newTasks) {
-        localStorage.setItem("nasdaq_tasks_professional", JSON.stringify(newTasks));
+        try {
+          localStorage.setItem("nasdaq_tasks_professional", JSON.stringify(newTasks));
 
-        if (this.allCompleted && !this.celebrationPlayed) {
-          this.triggerCelebration();
-        }
+          if (this.allCompleted && !this.celebrationPlayed) {
+            this.triggerCelebration();
+          }
 
-        if (!this.allCompleted) {
-          this.celebrationPlayed = false;
+          if (!this.allCompleted) {
+            this.celebrationPlayed = false;
+          }
+        } catch (error) {
+          console.error("Error al guardar tareas:", error);
         }
       },
       deep: true
     }
   },
   mounted() {
-    const savedTasks = localStorage.getItem("nasdaq_tasks_professional");
-    if (savedTasks) {
-      this.tasks = JSON.parse(savedTasks);
+    try {
+      const savedTasks = localStorage.getItem("nasdaq_tasks_professional");
+      if (savedTasks) {
+        this.tasks = JSON.parse(savedTasks);
+      }
+    } catch (error) {
+      console.error("Error al leer tareas:", error);
     }
 
     this.updateClock();
@@ -229,14 +259,13 @@ export default {
   },
   methods: {
     updateClock() {
-      const now = new Date();
-      this.currentTime = now.toLocaleTimeString();
+      this.currentTime = new Date().toLocaleTimeString();
     },
     addTask() {
       const text = this.newTask.trim();
       if (!text) return;
 
-      this.tasks.unshift({
+      this.tasks.push({
         id: Date.now() + Math.random(),
         text,
         done: false
@@ -287,10 +316,7 @@ export default {
 
           gain.gain.setValueAtTime(0.0001, now + note.start);
           gain.gain.exponentialRampToValueAtTime(0.18, now + note.start + 0.03);
-          gain.gain.exponentialRampToValueAtTime(
-            0.0001,
-            now + note.start + note.duration
-          );
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + note.start + note.duration);
 
           osc.connect(gain);
           gain.connect(ctx.destination);
@@ -313,10 +339,6 @@ export default {
 
 :root {
   color-scheme: dark;
-}
-
-body {
-  margin: 0;
 }
 
 .app-shell {
@@ -484,7 +506,6 @@ body {
   color: #f8fbff;
   font-size: 15px;
   outline: none;
-  transition: 0.2s ease;
 }
 
 .task-entry input:focus {
@@ -494,19 +515,12 @@ body {
 
 .primary-btn,
 .secondary-btn,
-.danger-btn {
+.danger-btn,
+.drag-handle {
   border: none;
   border-radius: 16px;
   cursor: pointer;
   font-weight: 700;
-  transition: transform 0.15s ease, opacity 0.2s ease, box-shadow 0.2s ease;
-}
-
-.primary-btn:hover,
-.secondary-btn:hover,
-.danger-btn:hover {
-  transform: translateY(-1px);
-  opacity: 0.96;
 }
 
 .primary-btn {
@@ -527,6 +541,15 @@ body {
   color: #fee2e2;
 }
 
+.drag-handle {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  background: rgba(30, 41, 59, 0.95);
+  color: #cbd5e1;
+  font-size: 18px;
+}
+
 .empty-state {
   border-radius: 20px;
   padding: 36px 20px;
@@ -538,15 +561,6 @@ body {
 .empty-icon {
   font-size: 42px;
   margin-bottom: 10px;
-}
-
-.empty-state h3 {
-  margin: 0 0 8px;
-}
-
-.empty-state p {
-  margin: 0;
-  color: #8ea1bc;
 }
 
 .task-list {
@@ -692,6 +706,20 @@ body {
   color: #f8fbff;
 }
 
+.ghost-task {
+  opacity: 0.5;
+  background: rgba(37, 99, 235, 0.2);
+  border: 1px dashed #60a5fa;
+}
+
+.chosen-task {
+  transform: scale(1.01);
+}
+
+.drag-task {
+  transform: rotate(1deg);
+}
+
 .celebration-overlay {
   position: fixed;
   inset: 0;
@@ -713,22 +741,11 @@ body {
   background: rgba(255, 255, 255, 0.96);
   color: #0f172a;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
-  animation: popIn 0.4s ease;
 }
 
 .celebration-icon {
   font-size: 48px;
   margin-bottom: 10px;
-}
-
-.celebration-box h2 {
-  margin: 0 0 8px;
-  font-size: 30px;
-}
-
-.celebration-box p {
-  margin: 0;
-  font-size: 17px;
 }
 
 .confetti {
@@ -740,40 +757,14 @@ body {
   animation: fall 3s linear forwards;
 }
 
-.confetti-1 { left: 8%; background: #38bdf8; animation-delay: 0s; }
-.confetti-2 { left: 18%; background: #f97316; animation-delay: 0.15s; }
-.confetti-3 { left: 28%; background: #22c55e; animation-delay: 0.05s; }
-.confetti-4 { left: 38%; background: #eab308; animation-delay: 0.2s; }
-.confetti-5 { left: 48%; background: #a855f7; animation-delay: 0.1s; }
-.confetti-6 { left: 58%; background: #ef4444; animation-delay: 0.18s; }
-.confetti-7 { left: 68%; background: #06b6d4; animation-delay: 0.08s; }
-.confetti-8 { left: 78%; background: #84cc16; animation-delay: 0.24s; }
-.confetti-9 { left: 88%; background: #3b82f6; animation-delay: 0.12s; }
-.confetti-10 { left: 94%; background: #f59e0b; animation-delay: 0.28s; }
-
-.celebration-enter-active,
-.celebration-leave-active {
-  transition: opacity 0.25s ease;
-}
-
-.celebration-enter-from,
-.celebration-leave-to {
-  opacity: 0;
-}
-
-@keyframes popIn {
-  0% {
-    transform: scale(0.72);
-    opacity: 0;
-  }
-  70% {
-    transform: scale(1.04);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1);
-  }
-}
+.confetti-1 { left: 8%; background: #38bdf8; }
+.confetti-2 { left: 18%; background: #f97316; }
+.confetti-3 { left: 28%; background: #22c55e; }
+.confetti-4 { left: 38%; background: #eab308; }
+.confetti-5 { left: 48%; background: #a855f7; }
+.confetti-6 { left: 58%; background: #ef4444; }
+.confetti-7 { left: 68%; background: #06b6d4; }
+.confetti-8 { left: 78%; background: #84cc16; }
 
 @keyframes fall {
   0% {
@@ -799,12 +790,6 @@ body {
 @media (max-width: 720px) {
   .app-shell {
     padding: 14px;
-  }
-
-  .hero-card,
-  .panel,
-  .mini-panel {
-    border-radius: 18px;
   }
 
   .hero-top {
@@ -835,24 +820,6 @@ body {
   .secondary-btn {
     width: 100%;
     min-height: 48px;
-  }
-
-  .market-badge {
-    width: fit-content;
-  }
-}
-
-@media (max-width: 420px) {
-  .hero-card h1 {
-    font-size: 28px;
-  }
-
-  .task-text {
-    font-size: 14px;
-  }
-
-  .celebration-box h2 {
-    font-size: 25px;
   }
 }
 </style>
