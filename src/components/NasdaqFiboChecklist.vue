@@ -7,9 +7,9 @@
         <div class="hero-top">
           <div>
             <p class="eyebrow">Trading Workflow</p>
-            <h1>Nasdaq 5M Task Board</h1>
+            <h1>Nasdaq 5M Task Board + 60R Tracker</h1>
             <p class="hero-text">
-              Arrastra tus tareas para ponerlas primero o al final según prioridad.
+              Organiza tareas, registra trades, edítalos, filtra por sesión y controla tu curva de R.
             </p>
           </div>
 
@@ -21,23 +21,27 @@
 
         <div class="hero-stats">
           <div class="stat-card">
-            <span class="stat-label">Total tasks</span>
-            <strong>{{ tasks.length }}</strong>
+            <span class="stat-label">Meta total</span>
+            <strong>{{ targetR }}R</strong>
+            <small>${{ targetUSD.toFixed(0) }}</small>
           </div>
 
           <div class="stat-card">
-            <span class="stat-label">Completadas</span>
-            <strong>{{ completedCount }}</strong>
+            <span class="stat-label">Llevas</span>
+            <strong>{{ totalR.toFixed(1) }}R</strong>
+            <small>${{ totalUSD.toFixed(0) }}</small>
           </div>
 
           <div class="stat-card">
-            <span class="stat-label">Pendientes</span>
-            <strong>{{ pendingCount }}</strong>
+            <span class="stat-label">Falta</span>
+            <strong>{{ remainingR.toFixed(1) }}R</strong>
+            <small>${{ remainingUSD.toFixed(0) }}</small>
           </div>
 
           <div class="stat-card">
             <span class="stat-label">Hora local</span>
             <strong>{{ currentTime }}</strong>
+            <small>{{ todayDate }}</small>
           </div>
         </div>
       </section>
@@ -47,9 +51,7 @@
           <div class="panel-header">
             <div>
               <h2>Task Manager</h2>
-              <p>
-                Agrega tareas, arrástralas para reordenarlas y todo se guarda automáticamente.
-              </p>
+              <p>Agrega tareas, arrástralas para reordenarlas y todo se guarda automáticamente.</p>
             </div>
           </div>
 
@@ -110,7 +112,7 @@
           <div v-if="tasks.length > 0" class="task-footer">
             <div class="progress-wrap">
               <div class="progress-head">
-                <span>Progreso</span>
+                <span>Progreso tareas</span>
                 <span>{{ progressPercent }}%</span>
               </div>
 
@@ -127,42 +129,241 @@
 
         <aside class="panel panel-side">
           <div class="mini-panel">
-            <h3>Estado actual</h3>
-            <p class="status-text" :class="allCompleted ? 'success' : 'warning'">
-              {{ allCompleted && tasks.length > 0
-                ? 'Todas las tareas fueron completadas'
-                : 'Aún hay tareas pendientes' }}
-            </p>
-          </div>
+            <h3>Progreso a 60R</h3>
 
-          <div class="mini-panel">
-            <h3>Cómo usarlo</h3>
-            <ul class="info-list">
-              <li>Arrastra con el botón ☰.</li>
-              <li>Pon arriba lo más importante.</li>
-              <li>Deja abajo lo menos urgente.</li>
-              <li>El orden se guarda automáticamente.</li>
-            </ul>
-          </div>
-
-          <div class="mini-panel">
-            <h3>Resumen rápido</h3>
             <div class="summary-box">
               <div class="summary-row">
-                <span>Win mindset</span>
-                <strong>Disciplinado</strong>
+                <span>1R</span>
+                <strong>${{ rValue.toFixed(0) }}</strong>
               </div>
               <div class="summary-row">
-                <span>Sesión</span>
-                <strong>Scalping / 5M</strong>
+                <span>Objetivo</span>
+                <strong>{{ targetR }}R</strong>
               </div>
               <div class="summary-row">
-                <span>Persistencia</span>
-                <strong>LocalStorage</strong>
+                <span>Acumulado</span>
+                <strong>{{ totalR.toFixed(1) }}R</strong>
+              </div>
+              <div class="summary-row">
+                <span>En dólares</span>
+                <strong>${{ totalUSD.toFixed(0) }}</strong>
+              </div>
+            </div>
+
+            <div class="progress-wrap top-space">
+              <div class="progress-head">
+                <span>Avance global</span>
+                <span>{{ targetProgressPercent }}%</span>
+              </div>
+
+              <div class="progress-bar">
+                <div class="progress-fill money-fill" :style="{ width: targetProgressPercent + '%' }"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mini-panel">
+            <h3>Métricas</h3>
+            <div class="summary-box">
+              <div class="summary-row">
+                <span>Total trades</span>
+                <strong>{{ trades.length }}</strong>
+              </div>
+              <div class="summary-row">
+                <span>Win rate</span>
+                <strong>{{ winRate }}%</strong>
+              </div>
+              <div class="summary-row">
+                <span>Trades hoy</span>
+                <strong>{{ todaysTrades }}</strong>
+              </div>
+              <div class="summary-row">
+                <span>R hoy</span>
+                <strong>{{ todaysR.toFixed(1) }}R</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="mini-panel">
+            <h3>Reglas del día</h3>
+            <div class="summary-box">
+              <div class="summary-row">
+                <span>Máx trades/día</span>
+                <strong>{{ dailyMaxTrades }}</strong>
+              </div>
+              <div class="summary-row">
+                <span>Stop diario</span>
+                <strong>{{ dailyMaxLossR.toFixed(1) }}R</strong>
+              </div>
+              <div class="summary-row">
+                <span>Estado</span>
+                <strong :class="{ dangerText: dailyLimitReached || dailyLossLimitReached, okText: !dailyLimitReached && !dailyLossLimitReached }">
+                  {{ dailyLimitReached || dailyLossLimitReached ? 'Detenerse' : 'Operable' }}
+                </strong>
               </div>
             </div>
           </div>
         </aside>
+      </section>
+
+      <section class="panel trades-panel">
+        <div class="panel-header trade-header">
+          <div>
+            <h2>Registro de trades</h2>
+            <p>Registra y edita tus operaciones en R. La app las convierte a dólares automáticamente.</p>
+          </div>
+
+          <div class="filter-box">
+            <label>Filtrar sesión</label>
+            <select v-model="sessionFilter">
+              <option value="All">Todas</option>
+              <option value="London">London</option>
+              <option value="New York">New York</option>
+              <option value="Asia">Asia</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="trade-form-grid">
+          <div class="field">
+            <label>Fecha</label>
+            <input v-model="tradeForm.date" type="date" />
+          </div>
+
+          <div class="field">
+            <label>Sesión</label>
+            <select v-model="tradeForm.session">
+              <option value="">Selecciona</option>
+              <option>London</option>
+              <option>New York</option>
+              <option>Asia</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Dirección</label>
+            <select v-model="tradeForm.direction">
+              <option value="">Selecciona</option>
+              <option>Long</option>
+              <option>Short</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Setup</label>
+            <input v-model="tradeForm.setup" type="text" placeholder="Ej: Retroceso Fibo 61.8" />
+          </div>
+
+          <div class="field">
+            <label>Resultado en R</label>
+            <input v-model.number="tradeForm.resultR" type="number" step="0.1" placeholder="Ej: 2 o -1" />
+          </div>
+
+          <div class="field">
+            <label>Nota</label>
+            <input v-model="tradeForm.note" type="text" placeholder="Ej: buena confirmación" />
+          </div>
+        </div>
+
+        <div class="trade-actions">
+          <button
+            class="primary-btn"
+            @click="saveTrade"
+            :disabled="!isEditing && (dailyLimitReached || dailyLossLimitReached)"
+          >
+            {{ isEditing ? 'Guardar cambios' : 'Agregar trade' }}
+          </button>
+
+          <button class="secondary-btn" @click="resetTradeForm">
+            {{ isEditing ? 'Cancelar edición' : 'Limpiar' }}
+          </button>
+        </div>
+
+        <p v-if="!isEditing && dailyLimitReached" class="warning-banner">
+          Llegaste al máximo de trades del día.
+        </p>
+        <p v-if="!isEditing && dailyLossLimitReached" class="danger-banner">
+          Alcanzaste tu stop diario en R. Deberías dejar de operar hoy.
+        </p>
+
+        <div class="curve-panel top-space">
+          <div class="curve-header">
+            <h3>Curva de R</h3>
+            <span>{{ filteredTrades.length }} trades filtrados</span>
+          </div>
+
+          <div v-if="curvePoints.length > 1" class="chart-wrap">
+            <svg viewBox="0 0 1000 260" class="curve-svg" preserveAspectRatio="none">
+              <line
+                v-if="zeroLineY !== null"
+                x1="0"
+                :y1="zeroLineY"
+                x2="1000"
+                :y2="zeroLineY"
+                class="zero-line"
+              />
+              <polyline
+                :points="curvePolyline"
+                class="curve-line"
+              />
+              <circle
+                v-for="(point, index) in curvePoints"
+                :key="index"
+                :cx="point.x"
+                :cy="point.y"
+                r="4"
+                class="curve-point"
+              />
+            </svg>
+          </div>
+
+          <div v-else class="empty-state compact-empty">
+            <h3>Aún no hay suficientes trades</h3>
+            <p>Agrega al menos 2 trades para ver la curva de R.</p>
+          </div>
+        </div>
+
+        <div v-if="filteredTrades.length === 0" class="empty-state top-space">
+          <div class="empty-icon">🧾</div>
+          <h3>No hay trades para este filtro</h3>
+          <p>Agrega un trade o cambia la sesión seleccionada.</p>
+        </div>
+
+        <div v-else class="trades-table-wrap top-space">
+          <table class="trades-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Sesión</th>
+                <th>Dir.</th>
+                <th>Setup</th>
+                <th>R</th>
+                <th>$</th>
+                <th>Nota</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="trade in filteredTrades" :key="trade.id">
+                <td>{{ trade.date }}</td>
+                <td>{{ trade.session }}</td>
+                <td>{{ trade.direction }}</td>
+                <td>{{ trade.setup }}</td>
+                <td :class="trade.resultR >= 0 ? 'positiveText' : 'negativeText'">
+                  {{ Number(trade.resultR).toFixed(1) }}R
+                </td>
+                <td :class="trade.resultUSD >= 0 ? 'positiveText' : 'negativeText'">
+                  ${{ Number(trade.resultUSD).toFixed(0) }}
+                </td>
+                <td>{{ trade.note }}</td>
+                <td class="action-cell">
+                  <button class="edit-btn" @click="editTrade(trade)">Editar</button>
+                  <button class="danger-btn small-btn" @click="removeTrade(trade.id)">Eliminar</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
     </main>
 
@@ -199,11 +400,30 @@ export default {
     return {
       newTask: "",
       tasks: [],
+      trades: [],
       showCelebration: false,
       celebrationPlayed: false,
       audioContext: null,
       currentTime: "",
-      clockInterval: null
+      todayDate: "",
+      clockInterval: null,
+
+      rValue: 50,
+      targetR: 60,
+      dailyMaxTrades: 5,
+      dailyMaxLossR: 3,
+
+      sessionFilter: "All",
+      editingTradeId: null,
+
+      tradeForm: {
+        date: "",
+        session: "",
+        direction: "",
+        setup: "",
+        resultR: null,
+        note: ""
+      }
     };
   },
   computed: {
@@ -219,6 +439,127 @@ export default {
     progressPercent() {
       if (!this.tasks.length) return 0;
       return Math.round((this.completedCount / this.tasks.length) * 100);
+    },
+
+    totalR() {
+      return this.trades.reduce((sum, trade) => sum + Number(trade.resultR || 0), 0);
+    },
+    totalUSD() {
+      return this.totalR * this.rValue;
+    },
+    targetUSD() {
+      return this.targetR * this.rValue;
+    },
+    remainingR() {
+      return Math.max(this.targetR - this.totalR, 0);
+    },
+    remainingUSD() {
+      return this.remainingR * this.rValue;
+    },
+    targetProgressPercent() {
+      if (!this.targetR) return 0;
+      return Math.min(Math.max(Math.round((this.totalR / this.targetR) * 100), 0), 100);
+    },
+    winningTrades() {
+      return this.trades.filter(trade => Number(trade.resultR) > 0).length;
+    },
+    winRate() {
+      if (!this.trades.length) return 0;
+      return Math.round((this.winningTrades / this.trades.length) * 100);
+    },
+
+    sortedTrades() {
+      return [...this.trades].sort((a, b) => {
+        const dateCompare = new Date(b.date) - new Date(a.date);
+        if (dateCompare !== 0) return dateCompare;
+        return b.id - a.id;
+      });
+    },
+
+    filteredTrades() {
+      if (this.sessionFilter === "All") return this.sortedTrades;
+      return this.sortedTrades.filter(trade => trade.session === this.sessionFilter);
+    },
+
+    todaysTrades() {
+      const today = this.getTodayString();
+      return this.trades.filter(trade => trade.date === today).length;
+    },
+    todaysR() {
+      const today = this.getTodayString();
+      return this.trades
+        .filter(trade => trade.date === today)
+        .reduce((sum, trade) => sum + Number(trade.resultR || 0), 0);
+    },
+    dailyLimitReached() {
+      return this.todaysTrades >= this.dailyMaxTrades;
+    },
+    dailyLossLimitReached() {
+      return this.todaysR <= -this.dailyMaxLossR;
+    },
+
+    isEditing() {
+      return this.editingTradeId !== null;
+    },
+
+    curveData() {
+      const trades = [...this.filteredTrades].reverse();
+      let cumulative = 0;
+      return trades.map((trade, index) => {
+        cumulative += Number(trade.resultR || 0);
+        return {
+          index,
+          cumulative
+        };
+      });
+    },
+
+    curvePoints() {
+      if (this.curveData.length === 0) return [];
+
+      const width = 1000;
+      const height = 260;
+      const paddingX = 40;
+      const paddingY = 24;
+
+      const values = this.curveData.map(p => p.cumulative);
+      const minVal = Math.min(...values, 0);
+      const maxVal = Math.max(...values, 0);
+
+      let range = maxVal - minVal;
+      if (range === 0) range = 1;
+
+      return this.curveData.map((point, idx) => {
+        const x = this.curveData.length === 1
+          ? width / 2
+          : paddingX + (idx * (width - paddingX * 2)) / (this.curveData.length - 1);
+
+        const normalized = (point.cumulative - minVal) / range;
+        const y = height - paddingY - normalized * (height - paddingY * 2);
+
+        return { x, y };
+      });
+    },
+
+    curvePolyline() {
+      return this.curvePoints.map(point => `${point.x},${point.y}`).join(" ");
+    },
+
+    zeroLineY() {
+      if (this.curveData.length === 0) return null;
+
+      const height = 260;
+      const paddingY = 24;
+
+      const values = this.curveData.map(p => p.cumulative);
+      const minVal = Math.min(...values, 0);
+      const maxVal = Math.max(...values, 0);
+
+      let range = maxVal - minVal;
+      if (range === 0) range = 1;
+
+      const normalized = (0 - minVal) / range;
+      return height - paddingY - normalized * (height - paddingY * 2);
     }
   },
   watch: {
@@ -239,6 +580,16 @@ export default {
         }
       },
       deep: true
+    },
+    trades: {
+      handler(newTrades) {
+        try {
+          localStorage.setItem("nasdaq_trade_log_60r", JSON.stringify(newTrades));
+        } catch (error) {
+          console.error("Error al guardar trades:", error);
+        }
+      },
+      deep: true
     }
   },
   mounted() {
@@ -247,20 +598,37 @@ export default {
       if (savedTasks) {
         this.tasks = JSON.parse(savedTasks);
       }
+
+      const savedTrades = localStorage.getItem("nasdaq_trade_log_60r");
+      if (savedTrades) {
+        this.trades = JSON.parse(savedTrades);
+      }
     } catch (error) {
-      console.error("Error al leer tareas:", error);
+      console.error("Error al leer datos:", error);
     }
 
     this.updateClock();
     this.clockInterval = setInterval(this.updateClock, 1000);
+    this.tradeForm.date = this.getTodayString();
   },
   beforeUnmount() {
     clearInterval(this.clockInterval);
   },
   methods: {
-    updateClock() {
-      this.currentTime = new Date().toLocaleTimeString();
+    getTodayString() {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, "0");
+      const day = String(today.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
     },
+
+    updateClock() {
+      const now = new Date();
+      this.currentTime = now.toLocaleTimeString();
+      this.todayDate = now.toLocaleDateString();
+    },
+
     addTask() {
       const text = this.newTask.trim();
       if (!text) return;
@@ -273,12 +641,95 @@ export default {
 
       this.newTask = "";
     },
+
     removeTask(id) {
       this.tasks = this.tasks.filter(task => task.id !== id);
     },
+
     clearCompleted() {
       this.tasks = this.tasks.filter(task => !task.done);
     },
+
+    validateTradeForm() {
+      return (
+        this.tradeForm.date &&
+        this.tradeForm.session &&
+        this.tradeForm.direction &&
+        this.tradeForm.setup &&
+        this.tradeForm.resultR !== null &&
+        this.tradeForm.resultR !== ""
+      );
+    },
+
+    saveTrade() {
+      if (!this.validateTradeForm()) {
+        alert("Completa los campos principales del trade.");
+        return;
+      }
+
+      const resultR = Number(this.tradeForm.resultR);
+      const tradePayload = {
+        date: this.tradeForm.date,
+        session: this.tradeForm.session,
+        direction: this.tradeForm.direction,
+        setup: this.tradeForm.setup,
+        resultR,
+        resultUSD: resultR * this.rValue,
+        note: this.tradeForm.note || ""
+      };
+
+      if (this.isEditing) {
+        const index = this.trades.findIndex(trade => trade.id === this.editingTradeId);
+        if (index !== -1) {
+          this.trades[index] = {
+            ...this.trades[index],
+            ...tradePayload
+          };
+        }
+      } else {
+        if (this.dailyLimitReached || this.dailyLossLimitReached) return;
+
+        this.trades.unshift({
+          id: Date.now() + Math.random(),
+          ...tradePayload
+        });
+      }
+
+      this.resetTradeForm();
+    },
+
+    editTrade(trade) {
+      this.editingTradeId = trade.id;
+      this.tradeForm = {
+        date: trade.date,
+        session: trade.session,
+        direction: trade.direction,
+        setup: trade.setup,
+        resultR: Number(trade.resultR),
+        note: trade.note || ""
+      };
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    },
+
+    resetTradeForm() {
+      this.editingTradeId = null;
+      this.tradeForm = {
+        date: this.getTodayString(),
+        session: "",
+        direction: "",
+        setup: "",
+        resultR: null,
+        note: ""
+      };
+    },
+
+    removeTrade(id) {
+      if (this.editingTradeId === id) {
+        this.resetTradeForm();
+      }
+      this.trades = this.trades.filter(trade => trade.id !== id);
+    },
+
     triggerCelebration() {
       this.celebrationPlayed = true;
       this.showCelebration = true;
@@ -288,6 +739,7 @@ export default {
         this.showCelebration = false;
       }, 3000);
     },
+
     playHappySound() {
       try {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -374,7 +826,8 @@ export default {
 
 .hero-card,
 .panel,
-.mini-panel {
+.mini-panel,
+.curve-panel {
   background: rgba(11, 18, 32, 0.72);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(148, 163, 184, 0.16);
@@ -461,8 +914,13 @@ export default {
 }
 
 .stat-card strong {
+  display: block;
   font-size: 28px;
   color: #ffffff;
+}
+
+.stat-card small {
+  color: #8ba0bb;
 }
 
 .board-grid {
@@ -477,7 +935,8 @@ export default {
 }
 
 .panel-header h2,
-.mini-panel h3 {
+.mini-panel h3,
+.curve-header h3 {
   margin: 0 0 8px;
   color: #f8fbff;
 }
@@ -485,18 +944,69 @@ export default {
 .panel-header p,
 .mini-panel p,
 .info-list,
-.summary-row span {
+.summary-row span,
+.curve-header span {
   color: #95a8c2;
 }
 
-.task-entry {
+.trade-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+.filter-box {
+  min-width: 180px;
+}
+
+.filter-box label {
+  display: block;
+  margin-bottom: 8px;
+  color: #a9bad0;
+  font-size: 14px;
+}
+
+.filter-box select {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.9);
+  color: #f8fbff;
+}
+
+.task-entry,
+.trade-form-grid {
   display: grid;
-  grid-template-columns: 1fr 150px;
   gap: 14px;
+}
+
+.task-entry {
+  grid-template-columns: 1fr 150px;
   margin: 22px 0 24px;
 }
 
-.task-entry input {
+.trade-form-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 20px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field label {
+  color: #a9bad0;
+  font-size: 14px;
+}
+
+.task-entry input,
+.field input,
+.field select {
   width: 100%;
   min-width: 0;
   padding: 16px 18px;
@@ -508,7 +1018,9 @@ export default {
   outline: none;
 }
 
-.task-entry input:focus {
+.task-entry input:focus,
+.field input:focus,
+.field select:focus {
   border-color: rgba(59, 130, 246, 0.8);
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
 }
@@ -516,7 +1028,8 @@ export default {
 .primary-btn,
 .secondary-btn,
 .danger-btn,
-.drag-handle {
+.drag-handle,
+.edit-btn {
   border: none;
   border-radius: 16px;
   cursor: pointer;
@@ -527,6 +1040,8 @@ export default {
   background: linear-gradient(135deg, #2563eb, #0ea5e9);
   color: white;
   box-shadow: 0 10px 30px rgba(37, 99, 235, 0.25);
+  min-height: 52px;
+  padding: 12px 18px;
 }
 
 .secondary-btn {
@@ -539,6 +1054,19 @@ export default {
   padding: 12px 14px;
   background: rgba(127, 29, 29, 0.95);
   color: #fee2e2;
+}
+
+.edit-btn {
+  padding: 8px 12px;
+  background: rgba(30, 64, 175, 0.95);
+  color: #dbeafe;
+  border-radius: 12px;
+}
+
+.small-btn {
+  min-height: auto;
+  padding: 8px 12px;
+  border-radius: 12px;
 }
 
 .drag-handle {
@@ -556,6 +1084,10 @@ export default {
   text-align: center;
   background: rgba(15, 23, 42, 0.7);
   border: 1px dashed rgba(148, 163, 184, 0.2);
+}
+
+.compact-empty {
+  padding: 22px 16px;
 }
 
 .empty-icon {
@@ -623,7 +1155,8 @@ export default {
   color: #7f93ad;
 }
 
-.task-footer {
+.task-footer,
+.trade-actions {
   margin-top: 24px;
   display: flex;
   justify-content: space-between;
@@ -658,34 +1191,20 @@ export default {
   transition: width 0.35s ease;
 }
 
+.money-fill {
+  background: linear-gradient(90deg, #f59e0b, #22c55e);
+}
+
 .panel-side {
   display: flex;
   flex-direction: column;
   gap: 18px;
 }
 
-.mini-panel {
+.mini-panel,
+.curve-panel {
   border-radius: 20px;
   padding: 20px;
-}
-
-.status-text {
-  margin: 0;
-  font-weight: 700;
-}
-
-.status-text.success {
-  color: #4ade80;
-}
-
-.status-text.warning {
-  color: #fbbf24;
-}
-
-.info-list {
-  margin: 0;
-  padding-left: 18px;
-  line-height: 1.8;
 }
 
 .summary-box {
@@ -704,6 +1223,123 @@ export default {
 
 .summary-row strong {
   color: #f8fbff;
+}
+
+.trades-panel {
+  margin-top: 24px;
+}
+
+.trades-table-wrap {
+  overflow-x: auto;
+}
+
+.trades-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1000px;
+}
+
+.trades-table th,
+.trades-table td {
+  padding: 12px 10px;
+  text-align: left;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.trades-table th {
+  color: #9db0c9;
+  font-weight: 700;
+}
+
+.action-cell {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.positiveText {
+  color: #4ade80;
+  font-weight: 700;
+}
+
+.negativeText {
+  color: #f87171;
+  font-weight: 700;
+}
+
+.okText {
+  color: #4ade80;
+}
+
+.dangerText {
+  color: #f87171;
+}
+
+.warning-banner,
+.danger-banner {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  font-weight: 700;
+}
+
+.warning-banner {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.danger-banner {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.curve-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.chart-wrap {
+  width: 100%;
+  height: 260px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.curve-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.zero-line {
+  stroke: rgba(255,255,255,0.18);
+  stroke-width: 2;
+  stroke-dasharray: 8 8;
+}
+
+.curve-line {
+  fill: none;
+  stroke: #38bdf8;
+  stroke-width: 4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.curve-point {
+  fill: #22c55e;
+  stroke: #07111f;
+  stroke-width: 2;
+}
+
+.top-space {
+  margin-top: 18px;
 }
 
 .ghost-task {
@@ -785,6 +1421,10 @@ export default {
   .hero-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .trade-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 720px) {
@@ -792,12 +1432,14 @@ export default {
     padding: 14px;
   }
 
-  .hero-top {
+  .hero-top,
+  .trade-header {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .hero-stats {
+  .hero-stats,
+  .trade-form-grid {
     grid-template-columns: 1fr;
   }
 
@@ -805,19 +1447,22 @@ export default {
     grid-template-columns: 1fr;
   }
 
-  .task-card {
+  .task-card,
+  .task-footer,
+  .trade-actions {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .task-footer {
+  .action-cell {
     flex-direction: column;
     align-items: stretch;
   }
 
   .danger-btn,
   .primary-btn,
-  .secondary-btn {
+  .secondary-btn,
+  .edit-btn {
     width: 100%;
     min-height: 48px;
   }
