@@ -76,21 +76,18 @@
             </div>
           </div>
 
-          <div class="task-form">
-            <input
-              v-model="newTask"
-              type="text"
-              placeholder="Ejemplo: Esperar confirmación en zona"
-              @keyup.enter="addTask"
-            />
-            <input
-              v-model.number="newTaskR"
-              type="number"
-              step="0.25"
-              placeholder="R"
-            />
-            <button class="primary-btn" @click="addTask">Agregar</button>
-          </div>
+         <div class="task-form">
+  <input
+    v-model="newTask"
+    type="text"
+    placeholder="Ejemplo: Esperar confirmación en zona"
+    @keyup.enter="addTask"
+  />
+
+  <button type="button" class="primary-btn" @click="addTask">
+    Agregar
+  </button>
+</div>
 
           <div class="progress-wrap">
             <div class="progress-labels">
@@ -110,11 +107,13 @@
             chosen-class="chosen-card"
             drag-class="drag-card"
             handle=".drag-handle"
+            :animation="200"
+            @end="onDragEnd"
           >
             <template #item="{ element }">
               <article class="task-card" :class="{ done: element.done }">
                 <div class="task-left">
-                  <button class="drag-handle" title="Arrastrar">☰</button>
+                  <button type="button" class="drag-handle" title="Arrastrar">☰</button>
 
                   <label class="task-check">
                     <input v-model="element.done" type="checkbox" />
@@ -127,7 +126,13 @@
                   </div>
                 </div>
 
-                <button class="danger-icon" @click="removeTask(element.id)">✕</button>
+                <button
+                  type="button"
+                  class="danger-icon"
+                  @click="removeTask(element.id)"
+                >
+                  ✕
+                </button>
               </article>
             </template>
           </draggable>
@@ -374,8 +379,6 @@ import { auth, db, googleProvider } from "../firebase";
 import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
 import { doc, setDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
 
-
-
 export default {
   name: "NasdaqFiboChecklist",
   components: {
@@ -384,12 +387,9 @@ export default {
 
   data() {
     return {
-
       currentTime: "",
-todayDate: "",
-timer: null,
-
-
+      todayDate: "",
+      timer: null,
 
       newTask: "",
       newTaskR: 1,
@@ -407,6 +407,7 @@ timer: null,
       saveTimer: null,
       unsubscribeAuth: null,
       unsubscribeBoard: null,
+      justSavedLocallyAt: 0,
 
       sessionFilter: "All",
       isEditing: false,
@@ -424,8 +425,6 @@ timer: null,
   },
 
   computed: {
-    
-
     completedCount() {
       return this.tasks.filter(task => task.done).length;
     },
@@ -644,13 +643,10 @@ timer: null,
   },
 
   mounted() {
-
-
     this.updateClock();
-this.timer = setInterval(() => {
-  this.updateClock();
-}, 1000);
-
+    this.timer = setInterval(() => {
+      this.updateClock();
+    }, 1000);
 
     this.loadLocalData();
 
@@ -673,6 +669,9 @@ this.timer = setInterval(() => {
           return;
         }
 
+        const now = Date.now();
+        if (now - this.justSavedLocallyAt < 1500) return;
+
         const data = snapshot.data();
         this.isHydratingFromCloud = true;
 
@@ -687,26 +686,38 @@ this.timer = setInterval(() => {
   },
 
   beforeUnmount() {
-
-if (this.timer) clearInterval(this.timer);
-
+    if (this.timer) clearInterval(this.timer);
     if (this.unsubscribeAuth) this.unsubscribeAuth();
     if (this.unsubscribeBoard) this.unsubscribeBoard();
     if (this.saveTimer) clearTimeout(this.saveTimer);
   },
 
   methods: {
+    updateClock() {
+      const now = new Date();
 
-updateClock() {
-  const now = new Date();
+      this.currentTime = now.toLocaleTimeString("es-PE", {
+        hour12: false
+      });
 
-  this.currentTime = now.toLocaleTimeString("es-PE", {
-    hour12: false
-  });
+      this.todayDate = now.toLocaleDateString("es-PE");
+    },
 
-  this.todayDate = now.toLocaleDateString("es-PE");
-},
+    onDragEnd() {
+      this.tasks = [...this.tasks];
+      this.justSavedLocallyAt = Date.now();
 
+      try {
+        localStorage.setItem(
+          "nasdaq_tasks_professional",
+          JSON.stringify(this.tasks)
+        );
+      } catch (error) {
+        console.error("Error al guardar orden de tareas:", error);
+      }
+
+      this.scheduleCloudSave();
+    },
 
     loadLocalData() {
       try {
@@ -796,25 +807,45 @@ updateClock() {
 
     addTask() {
       const text = this.newTask.trim();
-      if (!text) return;
 
-      this.tasks.push({
+      if (!text) {
+        alert("Escribe una tarea primero.");
+        return;
+      }
+
+      const newItem = {
         id: Date.now() + Math.random(),
         text,
         done: false,
-        r: this.getSafeR(this.newTaskR)
-      });
+        r: this.getSafeR(this.newTaskR || 1)
+      };
+
+      this.tasks = [...this.tasks, newItem];
+      this.justSavedLocallyAt = Date.now();
+
+      try {
+        localStorage.setItem(
+          "nasdaq_tasks_professional",
+          JSON.stringify(this.tasks)
+        );
+      } catch (error) {
+        console.error("Error guardando tarea local:", error);
+      }
 
       this.newTask = "";
       this.newTaskR = 1;
+
+      this.scheduleCloudSave();
     },
 
     removeTask(id) {
       this.tasks = this.tasks.filter(task => task.id !== id);
+      this.justSavedLocallyAt = Date.now();
     },
 
     clearCompleted() {
       this.tasks = this.tasks.filter(task => !task.done);
+      this.justSavedLocallyAt = Date.now();
     },
 
     resetTradeForm() {
@@ -854,9 +885,10 @@ updateClock() {
           trade.id === this.editingTradeId ? tradePayload : trade
         );
       } else {
-        this.trades.push(tradePayload);
+        this.trades = [...this.trades, tradePayload];
       }
 
+      this.justSavedLocallyAt = Date.now();
       this.resetTradeForm();
     },
 
@@ -876,6 +908,7 @@ updateClock() {
 
     removeTrade(id) {
       this.trades = this.trades.filter(trade => trade.id !== id);
+      this.justSavedLocallyAt = Date.now();
     },
 
     triggerCelebration() {
@@ -1174,7 +1207,7 @@ h2 {
 
 .task-form {
   display: grid;
-  grid-template-columns: 1fr 120px 140px;
+  grid-template-columns: 1fr 160px;
   gap: 12px;
   margin-top: 18px;
   margin-bottom: 18px;
