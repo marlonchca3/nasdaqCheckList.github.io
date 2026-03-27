@@ -374,6 +374,8 @@ import { auth, db, googleProvider } from "../firebase";
 import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
 import { doc, setDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
 
+
+
 export default {
   name: "NasdaqFiboChecklist",
   components: {
@@ -382,6 +384,13 @@ export default {
 
   data() {
     return {
+
+      currentTime: "",
+todayDate: "",
+timer: null,
+
+
+
       newTask: "",
       newTaskR: 1,
       rValue: 50,
@@ -415,13 +424,7 @@ export default {
   },
 
   computed: {
-    currentTime() {
-      return new Date().toLocaleTimeString();
-    },
-
-    todayDate() {
-      return new Date().toLocaleDateString();
-    },
+    
 
     completedCount() {
       return this.tasks.filter(task => task.done).length;
@@ -641,6 +644,14 @@ export default {
   },
 
   mounted() {
+
+
+    this.updateClock();
+this.timer = setInterval(() => {
+  this.updateClock();
+}, 1000);
+
+
     this.loadLocalData();
 
     this.unsubscribeAuth = onAuthStateChanged(auth, currentUser => {
@@ -676,12 +687,27 @@ export default {
   },
 
   beforeUnmount() {
+
+if (this.timer) clearInterval(this.timer);
+
     if (this.unsubscribeAuth) this.unsubscribeAuth();
     if (this.unsubscribeBoard) this.unsubscribeBoard();
     if (this.saveTimer) clearTimeout(this.saveTimer);
   },
 
   methods: {
+
+updateClock() {
+  const now = new Date();
+
+  this.currentTime = now.toLocaleTimeString("es-PE", {
+    hour12: false
+  });
+
+  this.todayDate = now.toLocaleDateString("es-PE");
+},
+
+
     loadLocalData() {
       try {
         const savedTasks = localStorage.getItem("nasdaq_tasks_professional");
