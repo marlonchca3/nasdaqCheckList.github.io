@@ -7,9 +7,10 @@
   position: relative;
   overflow: hidden;
   background:
-    radial-gradient(circle at top, rgba(59, 130, 246, 0.15), transparent 35%),
-    linear-gradient(135deg, #08111f 0%, #0b1728 45%, #07101d 100%);
-  color: #e5eefb;
+    radial-gradient(circle at 30% 20%, rgba(30, 58, 138, 0.25), transparent 50%),
+    radial-gradient(circle at 70% 80%, rgba(15, 23, 42, 0.3), transparent 50%),
+    linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 25%, #16213e 50%, #0f0f23 75%, #0a0a0a 100%);
+  color: #f1f5f9;
   font-family: Inter, Arial, sans-serif;
 }
 
@@ -17,9 +18,9 @@
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
-  background-size: 24px 24px;
+    linear-gradient(rgba(148, 163, 184, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.03) 1px, transparent 1px);
+  background-size: 32px 32px;
   pointer-events: none;
 }
 
@@ -28,7 +29,7 @@
   z-index: 1;
   max-width: 1400px;
   margin: 0 auto;
-  padding: 28px 20px 48px;
+  padding: 16px 14px 28px;
 }
 
 .auth-bar {
@@ -68,16 +69,19 @@
 
 .hero-card,
 .panel {
-  border: 1px solid rgba(148, 163, 184, 0.12);
-  background: rgba(8, 17, 31, 0.78);
-  backdrop-filter: blur(14px);
+  border: 1px solid rgba(148, 163, 184, 0.08);
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(20px);
   border-radius: 24px;
-  box-shadow: 0 20px 50px rgba(2, 8, 23, 0.35);
+  box-shadow:
+    0 25px 60px rgba(0, 0, 0, 0.4),
+    0 8px 25px rgba(30, 58, 138, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .hero-card {
-  padding: 26px;
-  margin-bottom: 20px;
+  padding: 16px;
+  margin-bottom: 16px;
 }
 
 .hero-top,
@@ -93,14 +97,14 @@
 }
 
 .hero-text {
-  color: #a8bbd5;
+  color: #cbd5e1;
   max-width: 620px;
 }
 
 .eyebrow {
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: #7dd3fc;
+  color: #60a5fa;
   font-size: 12px;
   margin: 0 0 8px;
 }
@@ -147,7 +151,7 @@ h2 {
 .goal-cards,
 .stats-mini-grid {
   display: grid;
-  gap: 14px;
+  gap: 8px;
 }
 
 .hero-stats {
@@ -159,8 +163,8 @@ h2 {
 .metric-box,
 .goal-card,
 .mini-stat {
-  padding: 18px;
-  border-radius: 18px;
+  padding: 12px;
+  border-radius: 14px;
   background: rgba(15, 23, 42, 0.76);
   border: 1px solid rgba(148, 163, 184, 0.1);
 }
@@ -206,7 +210,7 @@ h2 {
 }
 
 .panel {
-  padding: 22px;
+  padding: 14px;
 }
 
 .header-pills {
@@ -229,14 +233,14 @@ h2 {
 
 .task-form {
   display: grid;
-  grid-template-columns: 1fr 160px;
-  gap: 12px;
-  margin-top: 18px;
-  margin-bottom: 18px;
+  grid-template-columns: 1fr 120px;
+  gap: 8px;
+  margin-top: 12px;
+  margin-bottom: 12px;
 }
 
 .progress-wrap {
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
 
 .progress-bar {
@@ -262,12 +266,12 @@ h2 {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 14px;
-  padding: 15px 16px;
-  border-radius: 18px;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
   background: rgba(15, 23, 42, 0.7);
   border: 1px solid rgba(148, 163, 184, 0.1);
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .task-card.done {
@@ -360,17 +364,32 @@ h2 {
   transform: translateY(-1px);
 }
 
+.theme-toggle-btn {
+  background: rgba(148, 163, 184, 0.12);
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 14px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: 0.2s ease;
+  margin-right: 8px;
+}
+
+.theme-toggle-btn:hover {
+  background: rgba(148, 163, 184, 0.2);
+}
+
 .trade-panel,
 .chart-panel {
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 
 .trade-form-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 18px;
-  margin-bottom: 14px;
+  gap: 8px;
+  margin-top: 12px;
+  margin-bottom: 10px;
 }
 
 .table-wrap {
@@ -386,10 +405,10 @@ h2 {
 
 .trade-table th,
 .trade-table td {
-  padding: 12px 10px;
+  padding: 8px 8px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.1);
   text-align: left;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .trade-table th {
@@ -497,6 +516,188 @@ h2 {
 
 .drag-card {
   transform: rotate(1deg);
+}
+
+.light-mode {
+  background:
+    radial-gradient(circle at top, rgba(59, 130, 246, 0.1), transparent 35%),
+    linear-gradient(135deg, #f8fafc 0%, #e2e8f0 45%, #cbd5e1 100%);
+  color: #1e293b;
+}
+
+.light-mode .bg-grid {
+  background-image:
+    linear-gradient(rgba(51, 65, 85, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(51, 65, 85, 0.05) 1px, transparent 1px);
+}
+
+.light-mode .auth-bar,
+.light-mode .hero-card,
+.light-mode .panel {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(51, 65, 85, 0.12);
+  color: #1e293b;
+}
+
+.light-mode .stat-card,
+.light-mode .metric-box,
+.light-mode .goal-card,
+.light-mode .mini-stat {
+  background: rgba(241, 245, 249, 0.9);
+  border-color: rgba(51, 65, 85, 0.1);
+  color: #1e293b;
+}
+
+.light-mode .stat-label,
+.light-mode .goal-card span,
+.light-mode .mini-stat span,
+.light-mode .metric-box span {
+  color: #64748b;
+}
+
+.light-mode .stat-card strong,
+.light-mode .goal-card strong,
+.light-mode .mini-stat strong {
+  color: #0f172a;
+}
+
+.light-mode .eyebrow {
+  color: #3b82f6;
+}
+
+.light-mode .market-badge {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.2);
+  color: #1e40af;
+}
+
+.light-mode .task-card {
+  background: rgba(241, 245, 249, 0.8);
+  border-color: rgba(51, 65, 85, 0.1);
+  color: #1e293b;
+}
+
+.light-mode .task-copy p {
+  color: #1e293b;
+}
+
+.light-mode .task-copy small {
+  color: #64748b;
+}
+
+.light-mode .task-check span {
+  border-color: rgba(51, 65, 85, 0.2);
+  background: rgba(241, 245, 249, 0.9);
+}
+
+.light-mode .task-check input:checked + span {
+  background: #22c55e;
+  border-color: #22c55e;
+}
+
+.light-mode .trade-table th {
+  color: #64748b;
+}
+
+.light-mode .trade-table td {
+  border-bottom-color: rgba(51, 65, 85, 0.1);
+}
+
+.light-mode .empty-row {
+  color: #64748b;
+}
+
+.light-mode .curve-svg {
+  background: rgba(241, 245, 249, 0.8);
+}
+
+.light-mode .zero-line {
+  stroke: rgba(51, 65, 85, 0.2);
+}
+
+.light-mode .hero-text {
+  color: #64748b;
+}
+
+.light-mode .auth-left strong {
+  color: #0f172a;
+}
+
+.light-mode .auth-left span {
+  color: #64748b;
+}
+
+.light-mode .secondary-btn {
+  background: rgba(51, 65, 85, 0.1);
+  color: #475569;
+  border-color: rgba(51, 65, 85, 0.15);
+}
+
+.light-mode .primary-btn {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: white;
+}
+
+.light-mode .tiny-btn {
+  background: rgba(59, 130, 246, 0.1);
+  color: #1d4ed8;
+}
+
+.light-mode .tiny-btn.danger {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+.light-mode .pill {
+  background: rgba(59, 130, 246, 0.1);
+  color: #1d4ed8;
+  border-color: rgba(59, 130, 246, 0.15);
+}
+
+.light-mode .progress-bar {
+  background: rgba(51, 65, 85, 0.8);
+}
+
+.light-mode .progress-fill {
+  background: linear-gradient(90deg, #3b82f6, #22c55e);
+}
+
+.light-mode .progress-fill-goal {
+  background: linear-gradient(90deg, #f59e0b, #ef4444);
+}
+
+.light-mode .positive {
+  color: #16a34a;
+}
+
+.light-mode .negative,
+.light-mode .bad {
+  color: #dc2626;
+}
+
+.light-mode .celebration-overlay {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.light-mode input,
+.light-mode select {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(51, 65, 85, 0.15);
+  color: #1e293b;
+}
+
+.light-mode .theme-toggle-btn {
+  background: rgba(51, 65, 85, 0.1);
+  color: #475569;
+  border: 1px solid rgba(51, 65, 85, 0.15);
+  border-radius: 14px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.light-mode .theme-toggle-btn:hover {
+  background: rgba(51, 65, 85, 0.2);
 }
 
 @media (max-width: 1100px) {

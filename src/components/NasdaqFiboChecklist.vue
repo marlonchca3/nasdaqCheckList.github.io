@@ -1,5 +1,5 @@
 <template>
-  <div class="app-shell">
+  <div class="app-shell" :class="{ 'light-mode': !isDarkMode }">
     <div class="bg-grid"></div>
 
     <main class="dashboard">
@@ -13,6 +13,10 @@
         </div>
 
         <div class="auth-right">
+          <button class="theme-toggle-btn" @click="toggleTheme">
+            {{ isDarkMode ? '☀️ Claro' : '🌙 Oscuro' }}
+          </button>
+
           <button v-if="!user" class="primary-btn" @click="signInWithGoogle">
             Ingresar con Google
           </button>
@@ -82,6 +86,16 @@
     type="text"
     placeholder="Ejemplo: Esperar confirmación en zona"
     @keyup.enter="addTask"
+  />
+
+  <input
+    v-model.number="newTaskR"
+    type="number"
+    min="0.25"
+    step="0.25"
+    inputmode="decimal"
+    placeholder="1R"
+    title="R por tarea"
   />
 
   <button type="button" class="primary-btn" @click="addTask">
@@ -155,12 +169,12 @@
           <div class="metric-grid">
             <div class="metric-box">
               <span>1R ($)</span>
-              <input v-model.number="rValue" type="number" min="1" />
+              <input v-model.number="rValue" type="number" min="0" />
             </div>
 
             <div class="metric-box">
               <span>Objetivo ($)</span>
-              <input v-model.number="goalUSD" type="number" min="1" />
+              <input v-model.number="goalUSD" type="number" min="0" />
             </div>
           </div>
 
@@ -215,18 +229,6 @@
               <span>Win Rate</span>
               <strong>{{ Number(winRate || 0).toFixed(0) }}%</strong>
             </article>
-
-            <article class="mini-stat">
-              <span>Límite diario</span>
-              <strong :class="{ bad: dailyLimitReached }">{{ dailyMaxTrades }}</strong>
-            </article>
-
-            <article class="mini-stat">
-              <span>Loss límite</span>
-              <strong :class="{ bad: dailyLossLimitReached }">
-                {{ Number(dailyMaxLossR || 0).toFixed(1) }}R
-              </strong>
-            </article>
           </div>
         </section>
       </section>
@@ -269,7 +271,7 @@
           <input
             v-model.number="tradeForm.resultR"
             type="number"
-            step="0.25"
+            step="any"
             placeholder="Resultado R"
           />
 
@@ -397,9 +399,9 @@ export default {
       goalUSD: 3000,
       tasks: [],
       trades: [],
-      showCelebration: false,
-      celebrationPlayed: false,
       audioContext: null,
+
+      isDarkMode: true,
 
       user: null,
       authReady: false,
@@ -497,11 +499,11 @@ export default {
     },
 
     dailyMaxTrades() {
-      return 5;
+      return 999;
     },
 
     dailyMaxLossR() {
-      return -3;
+      return -999;
     },
 
     dailyLimitReached() {
@@ -585,6 +587,8 @@ export default {
     tasks: {
       handler(newTasks) {
         try {
+          this.justSavedLocallyAt = Date.now();
+
           const normalizedTasks = newTasks.map(task => ({
             ...task,
             r: this.getSafeR(task.r)
@@ -594,14 +598,6 @@ export default {
             "nasdaq_tasks_professional",
             JSON.stringify(normalizedTasks)
           );
-
-          if (this.allCompleted && !this.celebrationPlayed) {
-            this.triggerCelebration();
-          }
-
-          if (!this.allCompleted) {
-            this.celebrationPlayed = false;
-          }
 
           this.scheduleCloudSave();
         } catch (error) {
@@ -624,6 +620,7 @@ export default {
     },
 
     rValue(newVal) {
+      this.justSavedLocallyAt = Date.now();
       const safeValue = Number(newVal);
       localStorage.setItem(
         "nasdaq_r_value_only_tasks",
@@ -633,6 +630,7 @@ export default {
     },
 
     goalUSD(newVal) {
+      this.justSavedLocallyAt = Date.now();
       const safeValue = Number(newVal);
       localStorage.setItem(
         "nasdaq_goal_usd_only_tasks",
@@ -649,6 +647,11 @@ export default {
     }, 1000);
 
     this.loadLocalData();
+
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) {
+      this.isDarkMode = savedTheme === 'dark';
+    }
 
     this.unsubscribeAuth = onAuthStateChanged(auth, currentUser => {
       this.user = currentUser;
@@ -813,6 +816,8 @@ export default {
         return;
       }
 
+      this.justSavedLocallyAt = Date.now();
+
       const newItem = {
         id: Date.now() + Math.random(),
         text,
@@ -821,7 +826,6 @@ export default {
       };
 
       this.tasks = [...this.tasks, newItem];
-      this.justSavedLocallyAt = Date.now();
 
       try {
         localStorage.setItem(
@@ -839,13 +843,31 @@ export default {
     },
 
     removeTask(id) {
-      this.tasks = this.tasks.filter(task => task.id !== id);
       this.justSavedLocallyAt = Date.now();
+      this.tasks = this.tasks.filter(task => task.id !== id);
+      try {
+        localStorage.setItem(
+          "nasdaq_tasks_professional",
+          JSON.stringify(this.tasks)
+        );
+      } catch (error) {
+        console.error("Error guardando cambios de tareas:", error);
+      }
+      this.scheduleCloudSave();
     },
 
     clearCompleted() {
-      this.tasks = this.tasks.filter(task => !task.done);
       this.justSavedLocallyAt = Date.now();
+      this.tasks = this.tasks.filter(task => !task.done);
+      try {
+        localStorage.setItem(
+          "nasdaq_tasks_professional",
+          JSON.stringify(this.tasks)
+        );
+      } catch (error) {
+        console.error("Error guardando cambios de tareas:", error);
+      }
+      this.scheduleCloudSave();
     },
 
     resetTradeForm() {
@@ -970,6 +992,11 @@ export default {
       } catch (error) {
         console.error("No se pudo reproducir el sonido:", error);
       }
+    },
+
+    toggleTheme() {
+      this.isDarkMode = !this.isDarkMode;
+      localStorage.setItem('theme', this.isDarkMode ? 'dark' : 'light');
     }
   }
 };
