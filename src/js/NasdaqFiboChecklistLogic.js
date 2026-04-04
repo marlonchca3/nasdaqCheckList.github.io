@@ -44,7 +44,17 @@ export default {
         setup: "",
         resultR: 1,
         note: ""
-      }
+      },
+      availableVoices: []
+    };
+  },
+
+  mounted() {
+    // Cargar voces disponibles
+    this.loadVoices();
+    // Cargar voces cuando estén listas (evento asincrónico)
+    window.speechSynthesis.onvoiceschanged = () => {
+      this.loadVoices();
     };
   },
 
@@ -659,17 +669,41 @@ export default {
       this.speakText(message);
     },
 
+    loadVoices() {
+      const voices = window.speechSynthesis.getVoices();
+      this.availableVoices = voices;
+    },
+
     speakText(text) {
       // Cancelar cualquier síntesis de voz anterior
       window.speechSynthesis.cancel();
 
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "es-ES"; // Español
-      utterance.rate = 1.0; // Velocidad normal
-      utterance.pitch = 1.0; // Tono normal
+      utterance.lang = "es-MX"; // Español de México - voces más naturales
+      utterance.rate = 0.9; // Velocidad ligeramente reducida para claridad
+      utterance.pitch = 0.95; // Tono natural
       utterance.volume = 1.0; // Volumen máximo
 
-      window.speechSynthesis.speak(utterance);
+      // Seleccionar una voz compatible con español si está disponible
+      const voices = this.availableVoices.length > 0 ? this.availableVoices : window.speechSynthesis.getVoices();
+      
+      // Buscar voz con preferencia: Google > Premium > natural > cualquier español
+      const spanishVoice = voices.find(voice => voice.lang.startsWith('es') && (voice.name.includes('Google') || voice.name.includes('Premium') || voice.name.includes('natural')))
+        || voices.find(voice => voice.lang.startsWith('es'));
+      
+      if (spanishVoice) {
+        utterance.voice = spanishVoice;
+      }
+
+      // Esperar a que las voces estén listas si es necesario
+      if (voices.length > 0) {
+        window.speechSynthesis.speak(utterance);
+      } else {
+        // Reintentar en 100ms si aún no hay voces
+        setTimeout(() => {
+          this.speakText(text);
+        }, 100);
+      }
     },
 
     toggleTheme() {

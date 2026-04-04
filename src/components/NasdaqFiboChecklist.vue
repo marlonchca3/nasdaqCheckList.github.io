@@ -148,6 +148,9 @@
             <button class="secondary-btn" @click="clearCompleted">
               Borrar completadas
             </button>
+            <button class="secondary-btn" @click="announceCompletedTasks" title="Prueba voz">
+              🔊 Probar voz
+            </button>
           </div>
         </section>
 
