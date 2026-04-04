@@ -14,6 +14,7 @@ export default {
       currentTime: "",
       todayDate: "",
       timer: null,
+      lastSpokenMinute: null,
 
       newTask: "",
       rValue: 50,
@@ -268,6 +269,7 @@ export default {
       this.updateClock();
     }, 1000);
 
+
     this.loadLocalData();
 
     const savedTheme = localStorage.getItem('theme');
@@ -326,6 +328,13 @@ export default {
       });
 
       this.todayDate = now.toLocaleDateString("es-PE");
+
+      const seconds = now.getSeconds();
+      const minute = now.getMinutes();
+      if (seconds === 0 && minute % 5 === 0 && minute !== this.lastSpokenMinute) {
+        this.lastSpokenMinute = minute;
+        this.announceCompletedTasks();
+      }
     },
 
     onDragEnd() {
@@ -634,6 +643,33 @@ export default {
       } catch (error) {
         console.error("No se pudo reproducir el sonido:", error);
       }
+    },
+
+    announceCompletedTasks() {
+      const completedTasks = this.tasks.filter(task => task.done);
+
+      if (completedTasks.length === 0) {
+        this.speakText("No hay tareas completadas para anunciar.");
+        return;
+      }
+
+      const taskList = completedTasks.map(task => task.text).join(", ");
+      const message = `Tareas completadas: ${taskList}. Total: ${completedTasks.length} de ${this.tasks.length} tareas.`;
+
+      this.speakText(message);
+    },
+
+    speakText(text) {
+      // Cancelar cualquier síntesis de voz anterior
+      window.speechSynthesis.cancel();
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "es-ES"; // Español
+      utterance.rate = 1.0; // Velocidad normal
+      utterance.pitch = 1.0; // Tono normal
+      utterance.volume = 1.0; // Volumen máximo
+
+      window.speechSynthesis.speak(utterance);
     },
 
     toggleTheme() {
