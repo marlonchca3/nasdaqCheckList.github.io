@@ -341,7 +341,7 @@ export default {
 
       const seconds = now.getSeconds();
       const minute = now.getMinutes();
-      if (seconds === 0 && minute % 1 === 0 && minute !== this.lastSpokenMinute) {
+      if (seconds === 0 && minute % 5 === 0 && minute !== this.lastSpokenMinute) {
         this.lastSpokenMinute = minute;
         this.announceCompletedTasks();
       }
