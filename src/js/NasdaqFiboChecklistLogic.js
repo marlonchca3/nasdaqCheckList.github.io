@@ -341,7 +341,7 @@ export default {
 
       const seconds = now.getSeconds();
       const minute = now.getMinutes();
-      if (seconds === 0 && minute % 5 === 0 && minute !== this.lastSpokenMinute) {
+      if (seconds === 0 && minute % 1 === 0 && minute !== this.lastSpokenMinute) {
         this.lastSpokenMinute = minute;
         this.announceCompletedTasks();
       }
@@ -674,20 +674,68 @@ export default {
       this.availableVoices = voices;
     },
 
-    speakText(text) {
-      // Cancelar cualquier síntesis de voz anterior
-      window.speechSynthesis.cancel();
-
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "es-MX"; // Español de México - voces más naturales
-      utterance.rate = 0.9; // Velocidad ligeramente reducida para claridad
-      utterance.pitch = 0.95; // Tono natural
-      utterance.volume = 1.0; // Volumen máximo
-
-      // Seleccionar una voz compatible con español si está disponible
-      const voices = this.availableVoices.length > 0 ? this.availableVoices : window.speechSynthesis.getVoices();
+    async speakText(text) {
+      const apiKey = import.meta.env.VITE_GOOGLE_TTS_API_KEY;
       
-      // Buscar voz con preferencia: Google > Premium > natural > cualquier español
+      if (!apiKey) {
+        console.warn("Google Cloud TTS API key no configurada. Usando Web Speech API.");
+        this.speakTextFallback(text);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              input: { text: text },
+              voice: {
+                languageCode: "es-MX",
+                name: "es-MX-Standard-A", // Voz natural femenina
+                ssmlGender: "FEMALE"
+              },
+              audioConfig: {
+                audioEncoding: "MP3",
+                pitch: 0.0,
+                speakingRate: 0.9
+              }
+            })
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`API Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        // Reproducir el audio
+        const audioContent = data.audioContent;
+        const audio = new Audio(`data:audio/mp3;base64,${audioContent}`);
+        audio.play().catch(err => {
+          console.error("Error reproduciendo audio:", err);
+          this.speakTextFallback(text);
+        });
+      } catch (error) {
+        console.error("Error en Google Cloud TTS:", error);
+        this.speakTextFallback(text);
+      }
+    },
+
+    speakTextFallback(text) {
+      // Fallback a Web Speech API si Google Cloud falla
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "es-MX";
+      utterance.rate = 0.9;
+      utterance.pitch = 0.95;
+      utterance.volume = 1.0;
+
+      const voices = this.availableVoices.length > 0 ? this.availableVoices : window.speechSynthesis.getVoices();
       const spanishVoice = voices.find(voice => voice.lang.startsWith('es') && (voice.name.includes('Google') || voice.name.includes('Premium') || voice.name.includes('natural')))
         || voices.find(voice => voice.lang.startsWith('es'));
       
@@ -695,15 +743,7 @@ export default {
         utterance.voice = spanishVoice;
       }
 
-      // Esperar a que las voces estén listas si es necesario
-      if (voices.length > 0) {
-        window.speechSynthesis.speak(utterance);
-      } else {
-        // Reintentar en 100ms si aún no hay voces
-        setTimeout(() => {
-          this.speakText(text);
-        }, 100);
-      }
+      window.speechSynthesis.speak(utterance);
     },
 
     toggleTheme() {
