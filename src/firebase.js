@@ -4,7 +4,7 @@ import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDOzaWazKdlYhP75PY8X0Y3-byhFT8iVYc",
-  authDomain: "blogeekplatzi-d97a4.firebaseapp.com",
+  authDomain: "marlonchca3.github.io",
   projectId: "blogeekplatzi-d97a4",
   storageBucket: "blogeekplatzi-d97a4.firebasestorage.app",
   messagingSenderId: "168008095795",
