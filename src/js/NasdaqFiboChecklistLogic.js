@@ -403,25 +403,12 @@ export default {
       return Number.isFinite(n) ? n : 0;
     },
 
+
     async signInWithGoogle() {
       try {
-        await signInWithPopup(auth, googleProvider);
+        await signInWithRedirect(auth, googleProvider);
       } catch (error) {
-        console.error("Error al iniciar con Google:", error);
-
-        if (
-          error.code === "auth/popup-blocked" ||
-          error.code === "auth/cancelled-popup-request" ||
-          error.code === "auth/popup-closed-by-user"
-        ) {
-          try {
-            await signInWithRedirect(auth, googleProvider);
-            return;
-          } catch (redirectError) {
-            console.error("Error al redirigir para iniciar sesión con Google:", redirectError);
-          }
-        }
-
+        console.error("Error al iniciar con Google (redirect):", error);
         const errorMessage = error?.message || "Error desconocido al iniciar sesión con Google.";
         alert(`No se pudo iniciar sesión con Google: ${errorMessage}`);
       }
