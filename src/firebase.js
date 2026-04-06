@@ -2,9 +2,15 @@ import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
 
+const isBrowser = typeof window !== "undefined";
+const isProductionGithubPages = isBrowser
+  && window.location.hostname === "marlonchca3.github.io";
+
 const firebaseConfig = {
   apiKey: "AIzaSyDOzaWazKdlYhP75PY8X0Y3-byhFT8iVYc",
-  authDomain: "marlonchca3.github.io",
+  authDomain: isProductionGithubPages
+    ? "marlonchca3.github.io"
+    : "blogeekplatzi-d97a4.firebaseapp.com",
   projectId: "blogeekplatzi-d97a4",
   storageBucket: "blogeekplatzi-d97a4.firebasestorage.app",
   messagingSenderId: "168008095795",
