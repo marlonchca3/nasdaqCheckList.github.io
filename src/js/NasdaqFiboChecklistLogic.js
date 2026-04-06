@@ -1,6 +1,11 @@
 import draggable from "vuedraggable";
 import { auth, db, googleProvider } from "../firebase";
-import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
+import {
+  signInWithPopup,
+  signInWithRedirect,
+  signOut,
+  onAuthStateChanged
+} from "firebase/auth";
 import { doc, setDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
 
 export default {
@@ -403,7 +408,22 @@ export default {
         await signInWithPopup(auth, googleProvider);
       } catch (error) {
         console.error("Error al iniciar con Google:", error);
-        alert("No se pudo iniciar sesión con Google.");
+
+        if (
+          error.code === "auth/popup-blocked" ||
+          error.code === "auth/cancelled-popup-request" ||
+          error.code === "auth/popup-closed-by-user"
+        ) {
+          try {
+            await signInWithRedirect(auth, googleProvider);
+            return;
+          } catch (redirectError) {
+            console.error("Error al redirigir para iniciar sesión con Google:", redirectError);
+          }
+        }
+
+        const errorMessage = error?.message || "Error desconocido al iniciar sesión con Google.";
+        alert(`No se pudo iniciar sesión con Google: ${errorMessage}`);
       }
     },
 
