@@ -35,6 +35,19 @@ En Firebase Console ve a Authentication > Settings > Authorized domains y agrega
 - 127.0.0.1
 - marlonchca3.github.io
 
+## Deploy
+
+El repositorio ya incluye un workflow en [.github/workflows/deploy-pages.yml](.github/workflows/deploy-pages.yml) para publicar automáticamente en GitHub Pages cada vez que haces push a main.
+
+En GitHub solo debes verificar esto una vez:
+
+- Settings > Pages
+- Source: GitHub Actions
+
+La URL esperada de publicación es:
+
+- <https://marlonchca3.github.io/nasdaqCheckList.gitgub.io/>
+
 ### Compile and Hot-Reload for Development
 
 ```sh
