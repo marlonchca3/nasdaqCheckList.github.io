@@ -10,6 +10,12 @@
             {{ user.displayName || user.email }}
           </strong>
           <span v-else>No has iniciado sesión</span>
+          <p v-if="authInfoMessage && !authErrorMessage" class="auth-feedback auth-feedback-info">
+            {{ authInfoMessage }}
+          </p>
+          <p v-if="authErrorMessage" class="auth-feedback auth-feedback-error">
+            {{ authErrorMessage }}
+          </p>
         </div>
 
         <div class="auth-right">
@@ -17,8 +23,13 @@
             {{ isDarkMode ? '☀️ Claro' : '🌙 Oscuro' }}
           </button>
 
-          <button v-if="!user" class="primary-btn" @click="signInWithGoogle">
-            Ingresar con Google
+          <button
+            v-if="!user"
+            class="primary-btn"
+            :disabled="isSigningIn"
+            @click="signInWithGoogle"
+          >
+            {{ isSigningIn ? 'Conectando...' : 'Ingresar con Google' }}
           </button>
 
           <button v-else class="secondary-btn" @click="signOutUser">

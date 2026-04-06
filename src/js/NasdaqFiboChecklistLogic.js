@@ -1,6 +1,7 @@
 import draggable from "vuedraggable";
 import { auth, db, googleProvider } from "../firebase";
 import {
+  getRedirectResult,
   signInWithPopup,
   signInWithRedirect,
   signOut,
@@ -32,6 +33,9 @@ export default {
 
       user: null,
       authReady: false,
+      authErrorMessage: "",
+      authInfoMessage: "",
+      isSigningIn: false,
       isHydratingFromCloud: false,
       saveTimer: null,
       unsubscribeAuth: null,
@@ -51,15 +55,6 @@ export default {
         note: ""
       },
       availableVoices: []
-    };
-  },
-
-  mounted() {
-    // Cargar voces disponibles
-    this.loadVoices();
-    // Cargar voces cuando estén listas (evento asincrónico)
-    window.speechSynthesis.onvoiceschanged = () => {
-      this.loadVoices();
     };
   },
 
@@ -279,13 +274,18 @@ export default {
   },
 
   mounted() {
+    this.loadVoices();
+    window.speechSynthesis.onvoiceschanged = () => {
+      this.loadVoices();
+    };
+
     this.updateClock();
     this.timer = setInterval(() => {
       this.updateClock();
     }, 1000);
 
-
     this.loadLocalData();
+    this.handleRedirectResult();
 
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme) {
@@ -295,6 +295,12 @@ export default {
     this.unsubscribeAuth = onAuthStateChanged(auth, currentUser => {
       this.user = currentUser;
       this.authReady = true;
+      this.isSigningIn = false;
+
+      if (currentUser) {
+        this.authErrorMessage = "";
+        this.authInfoMessage = "";
+      }
 
       if (this.unsubscribeBoard) {
         this.unsubscribeBoard();
@@ -332,9 +338,63 @@ export default {
     if (this.unsubscribeAuth) this.unsubscribeAuth();
     if (this.unsubscribeBoard) this.unsubscribeBoard();
     if (this.saveTimer) clearTimeout(this.saveTimer);
+    window.speechSynthesis.onvoiceschanged = null;
   },
 
   methods: {
+    shouldUseRedirectAuth() {
+      return /android|iphone|ipad|ipod/i.test(window.navigator.userAgent);
+    },
+
+    shouldFallbackToRedirect(error) {
+      return [
+        "auth/popup-blocked",
+        "auth/operation-not-supported-in-this-environment"
+      ].includes(error?.code);
+    },
+
+    getFriendlyAuthMessage(error, fallbackMessage) {
+      switch (error?.code) {
+        case "auth/popup-blocked":
+          return "El navegador bloqueó la ventana emergente. Se intentará abrir Google con redirección.";
+        case "auth/popup-closed-by-user":
+          return "Se cerró la ventana de Google antes de completar el inicio de sesión.";
+        case "auth/cancelled-popup-request":
+          return "Ya hay un intento de inicio de sesión en curso. Espera unos segundos e inténtalo otra vez.";
+        case "auth/network-request-failed":
+          return "No se pudo conectar con Firebase. Verifica tu conexión e inténtalo de nuevo.";
+        case "auth/operation-not-allowed":
+          return "Google Sign-In no está habilitado en Firebase Authentication para este proyecto.";
+        case "auth/unauthorized-domain":
+          return `El dominio ${window.location.hostname} no está autorizado en Firebase Authentication. Debes agregarlo en la consola de Firebase.`;
+        case "auth/account-exists-with-different-credential":
+          return "Ese correo ya existe con otro método de acceso en Firebase.";
+        default:
+          return error?.message || fallbackMessage;
+      }
+    },
+
+    handleAuthError(error, fallbackMessage) {
+      this.authInfoMessage = "";
+      this.authErrorMessage = this.getFriendlyAuthMessage(error, fallbackMessage);
+      console.error("Error de autenticación:", error);
+    },
+
+    async handleRedirectResult() {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result?.user) {
+          this.authErrorMessage = "";
+          this.authInfoMessage = `Sesión iniciada como ${result.user.displayName || result.user.email || "usuario"}.`;
+        }
+      } catch (error) {
+        this.handleAuthError(
+          error,
+          "No se pudo completar el inicio de sesión con Google."
+        );
+      }
+    },
+
     updateClock() {
       const now = new Date();
 
@@ -405,12 +465,48 @@ export default {
 
 
     async signInWithGoogle() {
+      let redirectStarted = false;
+
+      this.authErrorMessage = "";
+      this.authInfoMessage = "";
+      this.isSigningIn = true;
+
       try {
-        await signInWithRedirect(auth, googleProvider);
+        if (this.shouldUseRedirectAuth()) {
+          redirectStarted = true;
+          this.authInfoMessage = "Redirigiendo a Google para iniciar sesión...";
+          await signInWithRedirect(auth, googleProvider);
+          return;
+        }
+
+        this.authInfoMessage = "Abriendo Google para iniciar sesión...";
+        await signInWithPopup(auth, googleProvider);
+        this.authInfoMessage = "";
       } catch (error) {
-        console.error("Error al iniciar con Google (redirect):", error);
-        const errorMessage = error?.message || "Error desconocido al iniciar sesión con Google.";
-        alert(`No se pudo iniciar sesión con Google: ${errorMessage}`);
+        if (this.shouldFallbackToRedirect(error)) {
+          try {
+            redirectStarted = true;
+            this.authErrorMessage = "";
+            this.authInfoMessage = "El navegador requiere redirección. Abriendo Google...";
+            await signInWithRedirect(auth, googleProvider);
+            return;
+          } catch (redirectError) {
+            this.handleAuthError(
+              redirectError,
+              "No se pudo redirigir a Google para iniciar sesión."
+            );
+            return;
+          }
+        }
+
+        this.handleAuthError(
+          error,
+          "No se pudo iniciar sesión con Google."
+        );
+      } finally {
+        if (!redirectStarted) {
+          this.isSigningIn = false;
+        }
       }
     },
 

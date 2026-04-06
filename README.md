@@ -25,6 +25,16 @@ See [Vite Configuration Reference](https://vite.dev/config/).
 npm install
 ```
 
+## Firebase Auth
+
+Para que el inicio de sesión con Google funcione, el dominio donde cargas la app debe estar agregado en Firebase Authentication.
+
+En Firebase Console ve a Authentication > Settings > Authorized domains y agrega, según corresponda:
+
+- localhost
+- 127.0.0.1
+- marlonchca3.github.io
+
 ### Compile and Hot-Reload for Development
 
 ```sh

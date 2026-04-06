@@ -61,10 +61,29 @@
   font-size: 14px;
 }
 
+.auth-feedback {
+  max-width: 520px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.auth-feedback-info {
+  color: #93c5fd;
+}
+
+.auth-feedback-error {
+  color: #fca5a5;
+}
+
 .auth-right {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+button:disabled {
+  opacity: 0.7;
+  cursor: wait;
 }
 
 .hero-card,

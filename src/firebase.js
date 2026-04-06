@@ -18,6 +18,11 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
 
+googleProvider.addScope("email");
+googleProvider.setCustomParameters({
+  prompt: "select_account"
+});
+
 enableIndexedDbPersistence(db).catch(() => {
   // Ignorar en desarrollo si ya hay otra pestaña abierta o el navegador no lo soporta
 });
