@@ -433,6 +433,12 @@ export default {
       return /android|iphone|ipad|ipod/i.test(window.navigator.userAgent);
     },
 
+    isInAppBrowser() {
+      const userAgent = window.navigator.userAgent || "";
+
+      return /FBAN|FBAV|Instagram|Line|MicroMessenger|wv\)|WebView|GSA|Twitter|TikTok/i.test(userAgent);
+    },
+
     shouldFallbackToRedirect(error) {
       return [
         "auth/popup-blocked",
@@ -456,7 +462,7 @@ export default {
         case "auth/operation-not-supported-in-this-environment":
           return "Este entorno no soporta el inicio de sesión con popup. Se recomienda continuar con redirección.";
         case "auth/web-storage-unsupported":
-          return "El navegador no permite el almacenamiento necesario para completar el login con Google. Prueba en una ventana normal del navegador.";
+          return "El navegador no permite el almacenamiento necesario para completar el login con Google. Prueba en Chrome, Edge o Safari fuera del modo privado.";
         case "auth/unauthorized-domain":
           return `El dominio ${window.location.hostname} no está autorizado en Firebase Authentication. En celular usa la URL publicada en GitHub Pages o agrega ese dominio en Firebase si realmente es público.`;
         case "auth/account-exists-with-different-credential":
@@ -568,6 +574,11 @@ export default {
       this.isSigningIn = true;
 
       try {
+        if (this.shouldUseRedirectAuth() && this.isInAppBrowser()) {
+          this.authErrorMessage = "Ese navegador integrado no soporta bien el login con Google. Abre la app en Chrome, Edge o Safari usando el navegador normal del celular.";
+          return;
+        }
+
         if (this.shouldWarnForMobileLocalAuth()) {
           this.authErrorMessage = "En celular no podrás iniciar sesión usando la URL local de tu laptop. Abre la app desde GitHub Pages: https://marlonchca3.github.io/nasdaqCheckList.gitgub.io/.";
           return;
