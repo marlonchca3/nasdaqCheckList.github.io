@@ -342,11 +342,19 @@ export default {
   },
 
   methods: {
+    isGithubPagesProject() {
+      return window.location.hostname === "marlonchca3.github.io";
+    },
+
     shouldUseRedirectAuth() {
+      if (this.isGithubPagesProject()) return false;
+
       return /android|iphone|ipad|ipod/i.test(window.navigator.userAgent);
     },
 
     shouldFallbackToRedirect(error) {
+      if (this.isGithubPagesProject()) return false;
+
       return [
         "auth/popup-blocked",
         "auth/operation-not-supported-in-this-environment"
@@ -356,7 +364,9 @@ export default {
     getFriendlyAuthMessage(error, fallbackMessage) {
       switch (error?.code) {
         case "auth/popup-blocked":
-          return "El navegador bloqueó la ventana emergente. Se intentará abrir Google con redirección.";
+          return this.isGithubPagesProject()
+            ? "El navegador bloqueó la ventana emergente. En GitHub Pages debes permitir popups para iniciar sesión con Google."
+            : "El navegador bloqueó la ventana emergente. Se intentará abrir Google con redirección.";
         case "auth/popup-closed-by-user":
           return "Se cerró la ventana de Google antes de completar el inicio de sesión.";
         case "auth/cancelled-popup-request":
@@ -365,6 +375,10 @@ export default {
           return "No se pudo conectar con Firebase. Verifica tu conexión e inténtalo de nuevo.";
         case "auth/operation-not-allowed":
           return "Google Sign-In no está habilitado en Firebase Authentication para este proyecto.";
+        case "auth/operation-not-supported-in-this-environment":
+          return this.isGithubPagesProject()
+            ? "Este navegador no permite el popup de Google en GitHub Pages. Prueba con Chrome o Edge en modo normal."
+            : "Este entorno no soporta el inicio de sesión con popup.";
         case "auth/unauthorized-domain":
           return `El dominio ${window.location.hostname} no está autorizado en Firebase Authentication. Debes agregarlo en la consola de Firebase.`;
         case "auth/account-exists-with-different-credential":

@@ -29,7 +29,7 @@ npm install
 
 Para que el inicio de sesión con Google funcione, el dominio donde cargas la app debe estar agregado en Firebase Authentication.
 
-Este proyecto también autoaloja los helpers de Firebase Auth en `public/__/` para evitar problemas de almacenamiento de terceros en GitHub Pages.
+En GitHub Pages de proyecto se usa popup con el `authDomain` original de Firebase. No se debe apuntar `authDomain` a `marlonchca3.github.io`, porque Firebase buscaría `__/auth/handler` en la raiz del dominio y esa ruta no existe para este repositorio.
 
 En Firebase Console ve a Authentication > Settings > Authorized domains y agrega, según corresponda:
 
