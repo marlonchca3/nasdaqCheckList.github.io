@@ -791,60 +791,7 @@ export default {
       this.availableVoices = voices;
     },
 
-    async speakText(text) {
-      const apiKey = import.meta.env.VITE_GOOGLE_TTS_API_KEY;
-      
-      if (!apiKey) {
-        console.warn("Google Cloud TTS API key no configurada. Usando Web Speech API.");
-        this.speakTextFallback(text);
-        return;
-      }
-
-      try {
-        const response = await fetch(
-          `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              input: { text: text },
-              voice: {
-                languageCode: "es-MX",
-                name: "es-MX-Standard-A", // Voz natural femenina
-                ssmlGender: "FEMALE"
-              },
-              audioConfig: {
-                audioEncoding: "MP3",
-                pitch: 0.0,
-                speakingRate: 0.9
-              }
-            })
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error(`API Error: ${response.status}`);
-        }
-
-        const data = await response.json();
-        
-        // Reproducir el audio
-        const audioContent = data.audioContent;
-        const audio = new Audio(`data:audio/mp3;base64,${audioContent}`);
-        audio.play().catch(err => {
-          console.error("Error reproduciendo audio:", err);
-          this.speakTextFallback(text);
-        });
-      } catch (error) {
-        console.error("Error en Google Cloud TTS:", error);
-        this.speakTextFallback(text);
-      }
-    },
-
-    speakTextFallback(text) {
-      // Fallback a Web Speech API si Google Cloud falla
+    speakText(text) {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = "es-MX";
@@ -853,8 +800,7 @@ export default {
       utterance.volume = 1.0;
 
       const voices = this.availableVoices.length > 0 ? this.availableVoices : window.speechSynthesis.getVoices();
-      const spanishVoice = voices.find(voice => voice.lang.startsWith('es') && (voice.name.includes('Google') || voice.name.includes('Premium') || voice.name.includes('natural')))
-        || voices.find(voice => voice.lang.startsWith('es'));
+      const spanishVoice = voices.find(voice => voice.lang.startsWith("es"));
       
       if (spanishVoice) {
         utterance.voice = spanishVoice;
