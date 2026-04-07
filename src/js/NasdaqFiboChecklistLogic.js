@@ -47,6 +47,7 @@ export default {
       justSavedLocallyAt: 0,
 
       sessionFilter: "All",
+      currentCalendarMonth: new Date().toISOString().slice(0, 7),
       isEditing: false,
       editingTradeId: null,
 
@@ -153,6 +154,132 @@ export default {
     filteredTrades() {
       if (this.sessionFilter === "All") return this.trades;
       return this.trades.filter(trade => trade.session === this.sessionFilter);
+    },
+
+    calendarMonthDate() {
+      return this.getCalendarMonthDate();
+    },
+
+    calendarMonthLabel() {
+      const label = this.calendarMonthDate.toLocaleDateString("es-PE", {
+        month: "long",
+        year: "numeric"
+      });
+
+      return label.charAt(0).toUpperCase() + label.slice(1);
+    },
+
+    calendarDayNames() {
+      return ["Dom", "Lun", "Mar", "Mie", "Jue", "Vie", "Sab"];
+    },
+
+    calendarMonthTrades() {
+      return this.filteredTrades
+        .filter(trade => trade.date?.startsWith(this.currentCalendarMonth))
+        .sort((left, right) => left.date.localeCompare(right.date));
+    },
+
+    calendarDailyStats() {
+      return this.calendarMonthTrades.reduce((accumulator, trade) => {
+        const dateKey = trade.date;
+
+        if (!accumulator[dateKey]) {
+          accumulator[dateKey] = {
+            date: dateKey,
+            totalR: 0,
+            totalUSD: 0,
+            tradeCount: 0,
+            wins: 0,
+            losses: 0
+          };
+        }
+
+        const tradeR = this.getSafeR(trade.resultR);
+        accumulator[dateKey].totalR += tradeR;
+        accumulator[dateKey].totalUSD += Number(trade.resultUSD) || tradeR * this.safeRValue;
+        accumulator[dateKey].tradeCount += 1;
+
+        if (tradeR > 0) accumulator[dateKey].wins += 1;
+        if (tradeR < 0) accumulator[dateKey].losses += 1;
+
+        return accumulator;
+      }, {});
+    },
+
+    calendarMonthStats() {
+      const days = Object.values(this.calendarDailyStats);
+      const totalTrades = this.calendarMonthTrades.length;
+      const totalR = days.reduce((sum, day) => sum + day.totalR, 0);
+      const totalUSD = days.reduce((sum, day) => sum + day.totalUSD, 0);
+      const winningTrades = this.calendarMonthTrades.filter(trade => this.getSafeR(trade.resultR) > 0).length;
+
+      return {
+        totalR,
+        totalUSD,
+        totalTrades,
+        activeDays: days.length,
+        positiveDays: days.filter(day => day.totalR > 0).length,
+        winRate: totalTrades ? Math.round((winningTrades / totalTrades) * 100) : 0
+      };
+    },
+
+    calendarWeeks() {
+      const monthDate = this.calendarMonthDate;
+      const year = monthDate.getFullYear();
+      const monthIndex = monthDate.getMonth();
+      const firstDayOffset = monthDate.getDay();
+      const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+      const totalSlots = Math.ceil((firstDayOffset + daysInMonth) / 7) * 7;
+      const todayKey = new Date().toISOString().slice(0, 10);
+      const weeks = [];
+
+      for (let slot = 0; slot < totalSlots; slot += 7) {
+        const days = [];
+
+        for (let dayOffset = 0; dayOffset < 7; dayOffset += 1) {
+          const index = slot + dayOffset;
+          const dayNumber = index - firstDayOffset + 1;
+          const isCurrentMonth = dayNumber >= 1 && dayNumber <= daysInMonth;
+
+          if (!isCurrentMonth) {
+            days.push({
+              key: `empty-${slot}-${dayOffset}`,
+              isCurrentMonth: false,
+              dayNumber: null,
+              summary: null,
+              isToday: false
+            });
+            continue;
+          }
+
+          const dateKey = `${this.currentCalendarMonth}-${String(dayNumber).padStart(2, "0")}`;
+          days.push({
+            key: dateKey,
+            date: dateKey,
+            dayNumber,
+            isCurrentMonth: true,
+            summary: this.calendarDailyStats[dateKey] || null,
+            isToday: dateKey === todayKey
+          });
+        }
+
+        const weekDaysWithTrades = days.filter(day => day.summary);
+        const summary = {
+          totalR: weekDaysWithTrades.reduce((sum, day) => sum + day.summary.totalR, 0),
+          totalUSD: weekDaysWithTrades.reduce((sum, day) => sum + day.summary.totalUSD, 0),
+          activeDays: weekDaysWithTrades.length,
+          tradeCount: weekDaysWithTrades.reduce((sum, day) => sum + day.summary.tradeCount, 0)
+        };
+
+        weeks.push({
+          key: `week-${slot / 7 + 1}`,
+          label: `Semana ${slot / 7 + 1}`,
+          days,
+          summary
+        });
+      }
+
+      return weeks;
     },
 
     curveData() {
@@ -410,6 +537,35 @@ export default {
   methods: {
     isGithubPagesProject() {
       return window.location.hostname === "marlonchca3.github.io";
+    },
+
+    getCalendarMonthDate(monthKey = this.currentCalendarMonth) {
+      const [year, month] = monthKey.split("-").map(Number);
+      return new Date(year, month - 1, 1);
+    },
+
+    changeCalendarMonth(step) {
+      const date = this.getCalendarMonthDate();
+      date.setMonth(date.getMonth() + step);
+      this.currentCalendarMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    },
+
+    resetCalendarMonth() {
+      this.currentCalendarMonth = new Date().toISOString().slice(0, 7);
+    },
+
+    formatCalendarValue(value, suffix = "") {
+      const formatter = new Intl.NumberFormat("es-PE", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2
+      });
+
+      return `${formatter.format(value)}${suffix}`;
+    },
+
+    getCalendarWinRate(summary) {
+      if (!summary || !summary.tradeCount) return 0;
+      return Math.round((summary.wins / summary.tradeCount) * 100);
     },
 
     isLocalNetworkHost() {
