@@ -347,26 +347,21 @@ export default {
     },
 
     shouldUseRedirectAuth() {
-      if (this.isGithubPagesProject()) return false;
-
       return /android|iphone|ipad|ipod/i.test(window.navigator.userAgent);
     },
 
     shouldFallbackToRedirect(error) {
-      if (this.isGithubPagesProject()) return false;
-
       return [
         "auth/popup-blocked",
-        "auth/operation-not-supported-in-this-environment"
+        "auth/operation-not-supported-in-this-environment",
+        "auth/web-storage-unsupported"
       ].includes(error?.code);
     },
 
     getFriendlyAuthMessage(error, fallbackMessage) {
       switch (error?.code) {
         case "auth/popup-blocked":
-          return this.isGithubPagesProject()
-            ? "El navegador bloqueó la ventana emergente. En GitHub Pages debes permitir popups para iniciar sesión con Google."
-            : "El navegador bloqueó la ventana emergente. Se intentará abrir Google con redirección.";
+          return "El navegador bloqueó la ventana emergente. Se intentará abrir Google con redirección.";
         case "auth/popup-closed-by-user":
           return "Se cerró la ventana de Google antes de completar el inicio de sesión.";
         case "auth/cancelled-popup-request":
@@ -376,9 +371,9 @@ export default {
         case "auth/operation-not-allowed":
           return "Google Sign-In no está habilitado en Firebase Authentication para este proyecto.";
         case "auth/operation-not-supported-in-this-environment":
-          return this.isGithubPagesProject()
-            ? "Este navegador no permite el popup de Google en GitHub Pages. Prueba con Chrome o Edge en modo normal."
-            : "Este entorno no soporta el inicio de sesión con popup.";
+          return "Este entorno no soporta el inicio de sesión con popup. Se recomienda continuar con redirección.";
+        case "auth/web-storage-unsupported":
+          return "El navegador no permite el almacenamiento necesario para completar el login con Google. Prueba en una ventana normal del navegador.";
         case "auth/unauthorized-domain":
           return `El dominio ${window.location.hostname} no está autorizado en Firebase Authentication. Debes agregarlo en la consola de Firebase.`;
         case "auth/account-exists-with-different-credential":
