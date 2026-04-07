@@ -51,6 +51,61 @@
   gap: 4px;
 }
 
+.sync-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: rgba(6, 14, 26, 0.72);
+}
+
+.sync-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  background: #94a3b8;
+  box-shadow: 0 0 0 6px rgba(148, 163, 184, 0.12);
+}
+
+.sync-status-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sync-status-copy strong {
+  color: #e2e8f0;
+  font-size: 13px;
+}
+
+.sync-status-copy span {
+  color: #8fa6c3;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.sync-status-loading .sync-status-dot,
+.sync-status-pending .sync-status-dot,
+.sync-status-saving .sync-status-dot {
+  background: #f59e0b;
+  box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.14);
+}
+
+.sync-status-synced .sync-status-dot {
+  background: #22c55e;
+  box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.14);
+}
+
+.sync-status-error .sync-status-dot {
+  background: #ef4444;
+  box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.14);
+}
+
 .auth-left strong {
   color: #ffffff;
   font-size: 16px;
@@ -740,6 +795,10 @@ h2 {
 
   h1 {
     font-size: 28px;
+  .sync-status {
+    width: 100%;
+  }
+
   }
 
   .hero-stats,

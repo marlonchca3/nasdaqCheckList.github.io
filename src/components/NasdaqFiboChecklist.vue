@@ -10,6 +10,13 @@
             {{ user.displayName || user.email }}
           </strong>
           <span v-else>No has iniciado sesión</span>
+          <div class="sync-status" :class="`sync-status-${syncState}`">
+            <span class="sync-status-dot"></span>
+            <div class="sync-status-copy">
+              <strong>{{ syncStatusLabel }}</strong>
+              <span v-if="syncStatusDetail">{{ syncStatusDetail }}</span>
+            </div>
+          </div>
           <p v-if="authInfoMessage && !authErrorMessage" class="auth-feedback auth-feedback-info">
             {{ authInfoMessage }}
           </p>

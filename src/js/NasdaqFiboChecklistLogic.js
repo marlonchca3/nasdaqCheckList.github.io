@@ -35,11 +35,15 @@ export default {
       authReady: false,
       authErrorMessage: "",
       authInfoMessage: "",
+      syncState: "local",
+      lastCloudSyncAt: null,
       isSigningIn: false,
       isHydratingFromCloud: false,
+      isLoadingLocalData: false,
       saveTimer: null,
       unsubscribeAuth: null,
       unsubscribeBoard: null,
+      hasReceivedInitialBoardSnapshot: false,
       justSavedLocallyAt: 0,
 
       sessionFilter: "All",
@@ -212,6 +216,39 @@ export default {
 
       const normalized = (0 - minVal) / range;
       return height - paddingY - normalized * (height - paddingY * 2);
+    },
+
+    syncStatusLabel() {
+      switch (this.syncState) {
+        case "loading":
+          return "Cargando nube";
+        case "pending":
+          return "Pendiente de sincronizar";
+        case "saving":
+          return "Guardando en la nube";
+        case "synced":
+          return "Sincronizado";
+        case "error":
+          return "Error de sincronizacion";
+        default:
+          return "Solo en este dispositivo";
+      }
+    },
+
+    syncStatusDetail() {
+      if (this.syncState === "synced" && this.lastCloudSyncAt) {
+        return `Ultima sincronizacion ${this.lastCloudSyncAt}`;
+      }
+
+      if (this.syncState === "local") {
+        return "Inicia sesion para ver los mismos datos en otros equipos.";
+      }
+
+      if (this.syncState === "error") {
+        return "No se pudo guardar el ultimo cambio en Firebase.";
+      }
+
+      return "";
     }
   },
 
@@ -219,7 +256,9 @@ export default {
     tasks: {
       handler(newTasks) {
         try {
-          this.justSavedLocallyAt = Date.now();
+          if (!this.isHydratingFromCloud && !this.isLoadingLocalData) {
+            this.justSavedLocallyAt = Date.now();
+          }
 
           const normalizedTasks = newTasks.map(task => ({
             id: task.id,
@@ -243,6 +282,10 @@ export default {
     trades: {
       handler(newTrades) {
         try {
+          if (!this.isHydratingFromCloud && !this.isLoadingLocalData) {
+            this.justSavedLocallyAt = Date.now();
+          }
+
           localStorage.setItem("nasdaq_trades_curve", JSON.stringify(newTrades));
           this.scheduleCloudSave();
         } catch (error) {
@@ -253,7 +296,10 @@ export default {
     },
 
     rValue(newVal) {
-      this.justSavedLocallyAt = Date.now();
+      if (!this.isHydratingFromCloud && !this.isLoadingLocalData) {
+        this.justSavedLocallyAt = Date.now();
+      }
+
       const safeValue = Number(newVal);
       localStorage.setItem(
         "nasdaq_r_value_only_tasks",
@@ -263,7 +309,10 @@ export default {
     },
 
     goalUSD(newVal) {
-      this.justSavedLocallyAt = Date.now();
+      if (!this.isHydratingFromCloud && !this.isLoadingLocalData) {
+        this.justSavedLocallyAt = Date.now();
+      }
+
       const safeValue = Number(newVal);
       localStorage.setItem(
         "nasdaq_goal_usd_only_tasks",
@@ -307,18 +356,30 @@ export default {
         this.unsubscribeBoard = null;
       }
 
+      this.hasReceivedInitialBoardSnapshot = false;
+
+      if (!currentUser) {
+        this.syncState = "local";
+        this.lastCloudSyncAt = null;
+      }
+
       if (!currentUser) return;
+
+      this.syncState = "loading";
 
       const boardRef = doc(db, "users", currentUser.uid, "boards", "main");
 
       this.unsubscribeBoard = onSnapshot(boardRef, snapshot => {
+        const isInitialSnapshot = !this.hasReceivedInitialBoardSnapshot;
+        this.hasReceivedInitialBoardSnapshot = true;
+
         if (!snapshot.exists()) {
           this.saveToCloud();
           return;
         }
 
         const now = Date.now();
-        if (now - this.justSavedLocallyAt < 3000) return;
+        if (!isInitialSnapshot && now - this.justSavedLocallyAt < 3000) return;
 
         const data = snapshot.data();
         this.isHydratingFromCloud = true;
@@ -329,6 +390,11 @@ export default {
         this.goalUSD = Number(data.goalUSD) > 0 ? Number(data.goalUSD) : 3000;
 
         this.isHydratingFromCloud = false;
+        this.syncState = "synced";
+        this.lastCloudSyncAt = new Date().toLocaleTimeString("es-PE", {
+          hour: "2-digit",
+          minute: "2-digit"
+        });
       });
     });
   },
@@ -438,6 +504,8 @@ export default {
     },
 
     loadLocalData() {
+      this.isLoadingLocalData = true;
+
       try {
         const savedTasks = localStorage.getItem("nasdaq_tasks_professional");
         if (savedTasks) {
@@ -464,6 +532,8 @@ export default {
         }
       } catch (error) {
         console.error("Error al leer datos locales:", error);
+      } finally {
+        this.isLoadingLocalData = false;
       }
     },
 
@@ -532,6 +602,8 @@ export default {
 
       if (this.saveTimer) clearTimeout(this.saveTimer);
 
+       this.syncState = "pending";
+
       this.saveTimer = setTimeout(() => {
         this.saveToCloud();
       }, 500);
@@ -541,6 +613,7 @@ export default {
       if (!this.user || this.isHydratingFromCloud) return;
 
       this.isHydratingFromCloud = true;
+      this.syncState = "saving";
 
       try {
         const boardRef = doc(db, "users", this.user.uid, "boards", "main");
@@ -560,7 +633,13 @@ export default {
         );
 
         this.justSavedLocallyAt = Date.now();
+        this.syncState = "synced";
+        this.lastCloudSyncAt = new Date().toLocaleTimeString("es-PE", {
+          hour: "2-digit",
+          minute: "2-digit"
+        });
       } catch (error) {
+        this.syncState = "error";
         console.error("Error al guardar en Firebase:", error);
       } finally {
         this.isHydratingFromCloud = false;
