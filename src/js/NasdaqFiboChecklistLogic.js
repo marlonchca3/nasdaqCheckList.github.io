@@ -412,6 +412,23 @@ export default {
       return window.location.hostname === "marlonchca3.github.io";
     },
 
+    isLocalNetworkHost() {
+      const hostname = window.location.hostname;
+
+      return (
+        hostname === "localhost"
+        || hostname === "127.0.0.1"
+        || hostname.endsWith(".local")
+        || /^10\./.test(hostname)
+        || /^192\.168\./.test(hostname)
+        || /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname)
+      );
+    },
+
+    shouldWarnForMobileLocalAuth() {
+      return this.shouldUseRedirectAuth() && this.isLocalNetworkHost() && !this.isGithubPagesProject();
+    },
+
     shouldUseRedirectAuth() {
       return /android|iphone|ipad|ipod/i.test(window.navigator.userAgent);
     },
@@ -441,7 +458,7 @@ export default {
         case "auth/web-storage-unsupported":
           return "El navegador no permite el almacenamiento necesario para completar el login con Google. Prueba en una ventana normal del navegador.";
         case "auth/unauthorized-domain":
-          return `El dominio ${window.location.hostname} no está autorizado en Firebase Authentication. Debes agregarlo en la consola de Firebase.`;
+          return `El dominio ${window.location.hostname} no está autorizado en Firebase Authentication. En celular usa la URL publicada en GitHub Pages o agrega ese dominio en Firebase si realmente es público.`;
         case "auth/account-exists-with-different-credential":
           return "Ese correo ya existe con otro método de acceso en Firebase.";
         default:
@@ -551,6 +568,11 @@ export default {
       this.isSigningIn = true;
 
       try {
+        if (this.shouldWarnForMobileLocalAuth()) {
+          this.authErrorMessage = "En celular no podrás iniciar sesión usando la URL local de tu laptop. Abre la app desde GitHub Pages: https://marlonchca3.github.io/nasdaqCheckList.gitgub.io/.";
+          return;
+        }
+
         if (this.shouldUseRedirectAuth()) {
           redirectStarted = true;
           this.authInfoMessage = "Redirigiendo a Google para iniciar sesión...";
