@@ -21,6 +21,8 @@ export default {
       todayDate: "",
       timer: null,
       lastSpokenMinute: null,
+      showCelebration: false,
+      celebrationPlayed: false,
 
       newTask: "",
       rValue: 50,
@@ -28,6 +30,22 @@ export default {
       tasks: [],
       trades: [],
       audioContext: null,
+      pomodoro: {
+        targetFocusMinutes: 240,
+        focusMinutes: 25,
+        shortBreakMinutes: 5,
+        longBreakMinutes: 15,
+        longBreakEvery: 4,
+        currentMode: "focus",
+        secondsLeft: 25 * 60,
+        isRunning: false,
+        completedFocusSessions: 0,
+        totalFocusedSeconds: 0,
+        lastTickAt: null
+      },
+      lastPomodoroLocalSaveAt: 0,
+      lastPomodoroCloudSaveAt: 0,
+      pomodoroGoalCelebrated: false,
 
       isDarkMode: true,
 
@@ -50,6 +68,9 @@ export default {
       currentCalendarMonth: new Date().toISOString().slice(0, 7),
       isEditing: false,
       editingTradeId: null,
+      emotionChecklist: {
+        state: ""
+      },
 
       tradeForm: {
         date: new Date().toISOString().slice(0, 10),
@@ -99,6 +120,10 @@ export default {
       return this.totalR * this.safeRValue;
     },
 
+    advancedGoalUSD() {
+      return this.totalUSD;
+    },
+
     remainingR() {
       return Math.max(this.goalR - this.totalR, 0);
     },
@@ -115,6 +140,122 @@ export default {
 
     targetProgressPercent() {
       return this.goalProgressPercent;
+    },
+
+    pomodoroTargetHours: {
+      get() {
+        const hours = this.pomodoro.targetFocusMinutes / 60;
+        return Number.isInteger(hours) ? hours : Number(hours.toFixed(2));
+      },
+      set(value) {
+        const safeHours = this.normalizePositiveNumber(value, 4);
+        const targetFocusMinutes = Math.max(30, Math.round(safeHours * 60));
+
+        this.pomodoro = {
+          ...this.pomodoro,
+          targetFocusMinutes,
+          totalFocusedSeconds: Math.min(this.pomodoro.totalFocusedSeconds, targetFocusMinutes * 60)
+        };
+
+        this.persistPomodoro({ forceLocal: true, forceCloud: true });
+      }
+    },
+
+    pomodoroTargetSeconds() {
+      return this.pomodoro.targetFocusMinutes * 60;
+    },
+
+    pomodoroTargetHoursLabel() {
+      const hours = this.pomodoro.targetFocusMinutes / 60;
+      return `${Number.isInteger(hours) ? hours : Number(hours.toFixed(1))}h`;
+    },
+
+    pomodoroProgressPercent() {
+      if (!this.pomodoroTargetSeconds) return 0;
+
+      const pct = (this.pomodoro.totalFocusedSeconds / this.pomodoroTargetSeconds) * 100;
+      return Math.min(Math.max(Math.round(pct), 0), 100);
+    },
+
+    pomodoroGoalReached() {
+      return this.pomodoro.totalFocusedSeconds >= this.pomodoroTargetSeconds;
+    },
+
+    pomodoroModeLabel() {
+      switch (this.pomodoro.currentMode) {
+        case "shortBreak":
+          return "Descanso corto";
+        case "longBreak":
+          return "Descanso largo";
+        default:
+          return "Enfoque";
+      }
+    },
+
+    pomodoroFormattedTime() {
+      return this.formatSeconds(this.pomodoro.secondsLeft);
+    },
+
+    pomodoroFocusedLabel() {
+      return this.formatDurationLabel(this.pomodoro.totalFocusedSeconds);
+    },
+
+    pomodoroRemainingLabel() {
+      return this.formatDurationLabel(
+        Math.max(this.pomodoroTargetSeconds - this.pomodoro.totalFocusedSeconds, 0)
+      );
+    },
+
+    pomodoroStatusLabel() {
+      if (this.pomodoroGoalReached && !this.pomodoro.isRunning) {
+        return "Objetivo diario cumplido";
+      }
+
+      if (this.pomodoro.isRunning) {
+        return `Sesión activa · bloque ${this.pomodoro.completedFocusSessions + 1}`;
+      }
+
+      return "Listo para continuar";
+    },
+
+    isTradeRegistrationBlocked() {
+      return this.emotionChecklist.state === "anxious";
+    },
+
+    tradeBlockingReason() {
+      if (this.emotionChecklist.state === "anxious") {
+        return "Estás ansioso. No puedes operar ni registrar trades hasta volver a estar calmado.";
+      }
+
+      if (!this.emotionChecklist.state) {
+        return "Marca primero si estás calmado o ansioso antes de registrar un trade.";
+      }
+
+      return "Estado validado. Puedes registrar el trade si seguiste tu proceso.";
+    },
+
+    emotionChecklistTitle() {
+      if (this.emotionChecklist.state === "calm") {
+        return "Estado apto para operar";
+      }
+
+      if (this.emotionChecklist.state === "anxious") {
+        return "Operativa bloqueada";
+      }
+
+      return "Confirma tu estado antes de operar";
+    },
+
+    emotionChecklistMessage() {
+      if (this.emotionChecklist.state === "calm") {
+        return "Puedes continuar con disciplina y registrar trades solo si respetaste tu plan.";
+      }
+
+      if (this.emotionChecklist.state === "anxious") {
+        return "La app bloquea el registro para evitar decisiones impulsivas. Baja pulsaciones y no operes.";
+      }
+
+      return "Este filtro emocional es obligatorio para abrir la operativa del día.";
     },
 
     todaysTrades() {
@@ -446,6 +587,18 @@ export default {
         JSON.stringify(safeValue > 0 ? safeValue : 3000)
       );
       this.scheduleCloudSave();
+    },
+
+    pomodoroGoalReached(newValue, oldValue) {
+      if (newValue && !oldValue && !this.pomodoroGoalCelebrated) {
+        this.pomodoroGoalCelebrated = true;
+        this.triggerCelebration();
+        this.speakText("Completaste las cuatro horas de concentración. Excelente trabajo.");
+      }
+
+      if (!newValue) {
+        this.pomodoroGoalCelebrated = false;
+      }
     }
   },
 
@@ -515,6 +668,9 @@ export default {
         this.trades = Array.isArray(data.trades) ? data.trades : [];
         this.rValue = Number(data.rValue) > 0 ? Number(data.rValue) : 50;
         this.goalUSD = Number(data.goalUSD) > 0 ? Number(data.goalUSD) : 3000;
+        this.pomodoro = this.normalizePomodoroState(data.pomodoro);
+        this.pomodoroGoalCelebrated = this.pomodoro.totalFocusedSeconds >= this.pomodoroTargetSeconds;
+        this.emotionChecklist = this.normalizeEmotionChecklist(data.emotionChecklist);
 
         this.isHydratingFromCloud = false;
         this.syncState = "synced";
@@ -527,6 +683,7 @@ export default {
   },
 
   beforeUnmount() {
+    this.persistPomodoro({ forceLocal: true });
     if (this.timer) clearInterval(this.timer);
     if (this.unsubscribeAuth) this.unsubscribeAuth();
     if (this.unsubscribeBoard) this.unsubscribeBoard();
@@ -535,6 +692,273 @@ export default {
   },
 
   methods: {
+    getDefaultEmotionChecklist() {
+      return {
+        state: ""
+      };
+    },
+
+    getDefaultPomodoroState() {
+      return {
+        targetFocusMinutes: 240,
+        focusMinutes: 25,
+        shortBreakMinutes: 5,
+        longBreakMinutes: 15,
+        longBreakEvery: 4,
+        currentMode: "focus",
+        secondsLeft: 25 * 60,
+        isRunning: false,
+        completedFocusSessions: 0,
+        totalFocusedSeconds: 0,
+        lastTickAt: null
+      };
+    },
+
+    normalizePositiveNumber(value, fallback) {
+      const parsedValue = Number(value);
+      return Number.isFinite(parsedValue) && parsedValue > 0 ? parsedValue : fallback;
+    },
+
+    normalizeEmotionChecklist(rawEmotionChecklist) {
+      const baseState = this.getDefaultEmotionChecklist();
+      const nextEmotionChecklist = {
+        ...baseState,
+        ...(rawEmotionChecklist || {})
+      };
+
+      nextEmotionChecklist.state = ["", "calm", "anxious"].includes(nextEmotionChecklist.state)
+        ? nextEmotionChecklist.state
+        : "";
+
+      return nextEmotionChecklist;
+    },
+
+    persistEmotionChecklist() {
+      if (!this.isHydratingFromCloud && !this.isLoadingLocalData) {
+        this.justSavedLocallyAt = Date.now();
+      }
+
+      try {
+        localStorage.setItem("nasdaq_emotion_checklist", JSON.stringify(this.emotionChecklist));
+      } catch (error) {
+        console.error("Error al guardar checklist emocional:", error);
+      }
+
+      this.scheduleCloudSave();
+    },
+
+    setEmotionState(state) {
+      this.emotionChecklist = this.normalizeEmotionChecklist({ state });
+
+      if (state === "anxious") {
+        this.speakText("Estás ansioso. No puedes operar.");
+      }
+
+      this.persistEmotionChecklist();
+    },
+
+    getPomodoroModeSeconds(mode, pomodoroState = this.pomodoro) {
+      if (mode === "shortBreak") return this.normalizePositiveNumber(pomodoroState.shortBreakMinutes, 5) * 60;
+      if (mode === "longBreak") return this.normalizePositiveNumber(pomodoroState.longBreakMinutes, 15) * 60;
+      return this.normalizePositiveNumber(pomodoroState.focusMinutes, 25) * 60;
+    },
+
+    normalizePomodoroState(rawPomodoro) {
+      const baseState = this.getDefaultPomodoroState();
+      const nextPomodoro = {
+        ...baseState,
+        ...(rawPomodoro || {})
+      };
+
+      nextPomodoro.targetFocusMinutes = this.normalizePositiveNumber(nextPomodoro.targetFocusMinutes, 240);
+      nextPomodoro.focusMinutes = this.normalizePositiveNumber(nextPomodoro.focusMinutes, 25);
+      nextPomodoro.shortBreakMinutes = this.normalizePositiveNumber(nextPomodoro.shortBreakMinutes, 5);
+      nextPomodoro.longBreakMinutes = this.normalizePositiveNumber(nextPomodoro.longBreakMinutes, 15);
+      nextPomodoro.longBreakEvery = Math.max(1, Math.round(this.normalizePositiveNumber(nextPomodoro.longBreakEvery, 4)));
+      nextPomodoro.currentMode = ["focus", "shortBreak", "longBreak"].includes(nextPomodoro.currentMode)
+        ? nextPomodoro.currentMode
+        : "focus";
+      nextPomodoro.completedFocusSessions = Math.max(0, Math.round(Number(nextPomodoro.completedFocusSessions) || 0));
+      nextPomodoro.totalFocusedSeconds = Math.max(0, Math.round(Number(nextPomodoro.totalFocusedSeconds) || 0));
+      nextPomodoro.totalFocusedSeconds = Math.min(
+        nextPomodoro.totalFocusedSeconds,
+        nextPomodoro.targetFocusMinutes * 60
+      );
+      nextPomodoro.isRunning = Boolean(nextPomodoro.isRunning);
+      nextPomodoro.lastTickAt = nextPomodoro.isRunning && Number(nextPomodoro.lastTickAt)
+        ? Number(nextPomodoro.lastTickAt)
+        : null;
+
+      const maxSecondsForMode = this.getPomodoroModeSeconds(nextPomodoro.currentMode, nextPomodoro);
+      const parsedSecondsLeft = Math.round(Number(nextPomodoro.secondsLeft));
+
+      nextPomodoro.secondsLeft = Number.isFinite(parsedSecondsLeft) && parsedSecondsLeft > 0
+        ? Math.min(parsedSecondsLeft, maxSecondsForMode)
+        : maxSecondsForMode;
+
+      return nextPomodoro;
+    },
+
+    formatSeconds(totalSeconds) {
+      const safeSeconds = Math.max(0, Math.round(Number(totalSeconds) || 0));
+      const minutes = Math.floor(safeSeconds / 60);
+      const seconds = safeSeconds % 60;
+
+      return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+    },
+
+    formatDurationLabel(totalSeconds) {
+      const safeSeconds = Math.max(0, Math.round(Number(totalSeconds) || 0));
+      const hours = Math.floor(safeSeconds / 3600);
+      const minutes = Math.floor((safeSeconds % 3600) / 60);
+
+      return `${hours}h ${String(minutes).padStart(2, "0")}m`;
+    },
+
+    persistPomodoro(options = {}) {
+      const now = Date.now();
+      const { forceLocal = false, forceCloud = false, allowCloud = false } = options;
+
+      if (!this.isHydratingFromCloud && !this.isLoadingLocalData) {
+        this.justSavedLocallyAt = now;
+      }
+
+      if (forceLocal || !this.lastPomodoroLocalSaveAt || now - this.lastPomodoroLocalSaveAt >= 5000) {
+        try {
+          localStorage.setItem("nasdaq_pomodoro_4h", JSON.stringify(this.pomodoro));
+          this.lastPomodoroLocalSaveAt = now;
+        } catch (error) {
+          console.error("Error al guardar pomodoro local:", error);
+        }
+      }
+
+      if (forceCloud || (allowCloud && this.user && now - this.lastPomodoroCloudSaveAt >= 30000)) {
+        this.lastPomodoroCloudSaveAt = now;
+        this.scheduleCloudSave();
+      }
+    },
+
+    advancePomodoroState(pomodoroState) {
+      const nextPomodoro = { ...pomodoroState };
+
+      if (nextPomodoro.currentMode === "focus") {
+        nextPomodoro.completedFocusSessions += 1;
+        nextPomodoro.currentMode = nextPomodoro.completedFocusSessions % nextPomodoro.longBreakEvery === 0
+          ? "longBreak"
+          : "shortBreak";
+      } else {
+        nextPomodoro.currentMode = "focus";
+      }
+
+      nextPomodoro.secondsLeft = this.getPomodoroModeSeconds(nextPomodoro.currentMode, nextPomodoro);
+      return nextPomodoro;
+    },
+
+    getPomodoroTransitionMessage(fromMode, toMode) {
+      if (fromMode === "focus" && toMode === "shortBreak") {
+        return "Bloque completado. Toma un descanso corto.";
+      }
+
+      if (fromMode === "focus" && toMode === "longBreak") {
+        return "Bloque completado. Toca un descanso largo.";
+      }
+
+      return "Descanso terminado. Vuelve a concentrarte.";
+    },
+
+    tickPomodoro() {
+      if (!this.pomodoro.isRunning) return;
+
+      const now = Date.now();
+      const lastTickAt = Number(this.pomodoro.lastTickAt) || now;
+      const elapsedSeconds = Math.floor((now - lastTickAt) / 1000);
+
+      if (elapsedSeconds <= 0) return;
+
+      let nextPomodoro = { ...this.pomodoro };
+      let remainingElapsed = elapsedSeconds;
+      let latestTransition = null;
+
+      while (remainingElapsed > 0) {
+        const step = Math.min(remainingElapsed, nextPomodoro.secondsLeft);
+
+        if (nextPomodoro.currentMode === "focus") {
+          nextPomodoro.totalFocusedSeconds = Math.min(
+            this.pomodoroTargetSeconds,
+            nextPomodoro.totalFocusedSeconds + step
+          );
+        }
+
+        nextPomodoro.secondsLeft -= step;
+        remainingElapsed -= step;
+
+        if (nextPomodoro.secondsLeft <= 0) {
+          const previousMode = nextPomodoro.currentMode;
+          nextPomodoro = this.advancePomodoroState(nextPomodoro);
+          latestTransition = {
+            from: previousMode,
+            to: nextPomodoro.currentMode
+          };
+        }
+      }
+
+      if (nextPomodoro.totalFocusedSeconds >= this.pomodoroTargetSeconds) {
+        nextPomodoro.isRunning = false;
+        nextPomodoro.lastTickAt = null;
+      } else {
+        nextPomodoro.lastTickAt = now;
+      }
+
+      this.pomodoro = nextPomodoro;
+
+      if (latestTransition && elapsedSeconds <= 2) {
+        this.speakText(this.getPomodoroTransitionMessage(latestTransition.from, latestTransition.to));
+      }
+
+      this.persistPomodoro({ allowCloud: true });
+    },
+
+    togglePomodoro() {
+      if (this.pomodoro.isRunning) {
+        this.pomodoro = {
+          ...this.pomodoro,
+          isRunning: false,
+          lastTickAt: null
+        };
+      } else {
+        this.pomodoro = {
+          ...this.pomodoro,
+          isRunning: true,
+          lastTickAt: Date.now()
+        };
+      }
+
+      this.persistPomodoro({ forceLocal: true, forceCloud: true });
+    },
+
+    skipPomodoroPhase() {
+      const nextPomodoro = this.advancePomodoroState(this.pomodoro);
+
+      this.pomodoro = {
+        ...nextPomodoro,
+        isRunning: this.pomodoro.isRunning,
+        lastTickAt: this.pomodoro.isRunning ? Date.now() : null
+      };
+
+      this.persistPomodoro({ forceLocal: true, forceCloud: true });
+    },
+
+    resetPomodoro() {
+      const defaultPomodoro = this.getDefaultPomodoroState();
+
+      this.pomodoro = {
+        ...defaultPomodoro,
+        secondsLeft: this.getPomodoroModeSeconds(defaultPomodoro.currentMode, defaultPomodoro)
+      };
+      this.pomodoroGoalCelebrated = false;
+      this.persistPomodoro({ forceLocal: true, forceCloud: true });
+    },
+
     isGithubPagesProject() {
       return window.location.hostname === "marlonchca3.github.io";
     },
@@ -657,6 +1081,7 @@ export default {
       });
 
       this.todayDate = now.toLocaleDateString("es-PE");
+      this.tickPomodoro();
 
       const seconds = now.getSeconds();
       const minute = now.getMinutes();
@@ -708,6 +1133,17 @@ export default {
         if (savedGoalUSD) {
           const parsedGoal = Number(JSON.parse(savedGoalUSD));
           this.goalUSD = parsedGoal > 0 ? parsedGoal : 3000;
+        }
+
+        const savedPomodoro = localStorage.getItem("nasdaq_pomodoro_4h");
+        if (savedPomodoro) {
+          this.pomodoro = this.normalizePomodoroState(JSON.parse(savedPomodoro));
+          this.pomodoroGoalCelebrated = this.pomodoro.totalFocusedSeconds >= this.pomodoroTargetSeconds;
+        }
+
+        const savedEmotionChecklist = localStorage.getItem("nasdaq_emotion_checklist");
+        if (savedEmotionChecklist) {
+          this.emotionChecklist = this.normalizeEmotionChecklist(JSON.parse(savedEmotionChecklist));
         }
       } catch (error) {
         console.error("Error al leer datos locales:", error);
@@ -812,6 +1248,8 @@ export default {
           {
             tasks: this.tasks,
             trades: this.trades,
+            pomodoro: this.pomodoro,
+            emotionChecklist: this.emotionChecklist,
             rValue: this.safeRValue,
             goalUSD: this.safeGoalUSD,
             updatedAt: serverTimestamp(),
@@ -925,6 +1363,11 @@ export default {
     },
 
     saveTrade() {
+      if (!this.emotionChecklist.state || this.isTradeRegistrationBlocked) {
+        alert(this.tradeBlockingReason);
+        return;
+      }
+
       const resultR = this.getSafeR(this.tradeForm.resultR);
 
       const tradePayload = {

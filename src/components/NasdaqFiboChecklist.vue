@@ -172,79 +172,167 @@
           </div>
         </section>
 
-        <section class="panel">
-          <div class="panel-header">
-            <div>
-              <p class="eyebrow">Objetivo</p>
-              <h2>Meta de evaluación</h2>
-            </div>
-          </div>
+        <div class="panel-stack">
+          <section class="panel pomodoro-panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Concentración</p>
+                <h2>Pomodoro editable</h2>
+              </div>
 
-          <div class="metric-grid">
-            <div class="metric-box">
-              <span>1R ($)</span>
-              <input v-model.number="rValue" type="number" min="0" />
-            </div>
-
-            <div class="metric-box">
-              <span>Objetivo ($)</span>
-              <input v-model.number="goalUSD" type="number" min="0" />
-            </div>
-          </div>
-
-          <div class="goal-cards">
-            <article class="goal-card">
-              <span>Total R</span>
-              <strong>{{ Number(totalR || 0).toFixed(2) }}R</strong>
-            </article>
-
-            <article class="goal-card">
-              <span>Total USD</span>
-              <strong>${{ Number(totalUSD || 0).toFixed(2) }}</strong>
-            </article>
-
-            <article class="goal-card">
-              <span>Restan R</span>
-              <strong>{{ Number(remainingR || 0).toFixed(2) }}R</strong>
-            </article>
-
-            <article class="goal-card">
-              <span>Restan USD</span>
-              <strong>${{ Number(remainingUSD || 0).toFixed(2) }}</strong>
-            </article>
-          </div>
-
-          <div class="progress-wrap">
-            <div class="progress-labels">
-              <span>Avance hacia meta</span>
-              <strong>{{ Number(targetProgressPercent || 0).toFixed(0) }}%</strong>
+              <div class="header-pills">
+                <span class="pill">25/5</span>
+                <span class="pill">Descanso largo 15m</span>
+              </div>
             </div>
 
-            <div class="progress-bar">
-              <div
-                class="progress-fill progress-fill-goal"
-                :style="{ width: goalProgressPercent + '%' }"
-              ></div>
+            <p class="pomodoro-copy">
+              Ajusta tu meta diaria de enfoque y trabaja en bloques pomodoro con descansos automáticos.
+            </p>
+
+            <div class="pomodoro-settings-grid">
+              <div class="metric-box pomodoro-setting-box">
+                <span>Meta diaria (horas)</span>
+                <input v-model.number="pomodoroTargetHours" type="number" min="0.5" step="0.5" />
+              </div>
+
+              <article class="mini-stat pomodoro-setting-stat">
+                <span>Meta actual</span>
+                <strong>{{ pomodoroTargetHoursLabel }}</strong>
+              </article>
             </div>
-          </div>
 
-          <div class="stats-mini-grid">
-            <article class="mini-stat">
-              <span>Trades hoy</span>
-              <strong>{{ todaysTrades }}</strong>
-            </article>
+            <div class="pomodoro-hero" :class="`pomodoro-mode-${pomodoro.currentMode}`">
+              <span class="pomodoro-mode-chip">{{ pomodoroModeLabel }}</span>
+              <strong class="pomodoro-time">{{ pomodoroFormattedTime }}</strong>
+              <span class="pomodoro-status">{{ pomodoroStatusLabel }}</span>
+            </div>
 
-            <article class="mini-stat">
-              <span>R hoy</span>
-              <strong>{{ Number(todaysR || 0).toFixed(2) }}</strong>
-            </article>
+            <div class="progress-wrap pomodoro-progress-wrap">
+              <div class="progress-labels">
+                <span>Avance {{ pomodoroTargetHoursLabel }}</span>
+                <strong>{{ pomodoroProgressPercent }}%</strong>
+              </div>
 
-            <article class="mini-stat">
-              <span>Win Rate</span>
-              <strong>{{ Number(winRate || 0).toFixed(0) }}%</strong>
-            </article>
-          </div>
-        </section>
+              <div class="progress-bar">
+                <div
+                  class="progress-fill progress-fill-pomodoro"
+                  :style="{ width: pomodoroProgressPercent + '%' }"
+                ></div>
+              </div>
+            </div>
+
+            <div class="stats-mini-grid pomodoro-stats-grid">
+              <article class="mini-stat">
+                <span>Enfoque acumulado</span>
+                <strong>{{ pomodoroFocusedLabel }}</strong>
+              </article>
+
+              <article class="mini-stat">
+                <span>Tiempo restante</span>
+                <strong>{{ pomodoroRemainingLabel }}</strong>
+              </article>
+
+              <article class="mini-stat">
+                <span>Bloques cerrados</span>
+                <strong>{{ pomodoro.completedFocusSessions }}</strong>
+              </article>
+            </div>
+
+            <div class="pomodoro-controls">
+              <button class="primary-btn" @click="togglePomodoro">
+                {{ pomodoro.isRunning ? 'Pausar' : (pomodoroGoalReached ? 'Seguir' : 'Iniciar') }}
+              </button>
+              <button class="secondary-btn" @click="skipPomodoroPhase">
+                Saltar fase
+              </button>
+              <button class="secondary-btn" @click="resetPomodoro">
+                Reiniciar
+              </button>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Objetivo</p>
+                <h2>Meta de evaluación</h2>
+              </div>
+            </div>
+
+            <div class="metric-grid">
+              <div class="metric-box">
+                <span>1R ($)</span>
+                <input v-model.number="rValue" type="number" min="0" />
+              </div>
+
+              <div class="metric-box">
+                <span>Objetivo ($)</span>
+                <input v-model.number="goalUSD" type="number" min="0" />
+              </div>
+            </div>
+
+            <div class="goal-cards">
+              <article class="goal-card">
+                <span>Avanzado</span>
+                <strong :class="{ positive: advancedGoalUSD > 0, negative: advancedGoalUSD < 0 }">
+                  ${{ Number(advancedGoalUSD || 0).toFixed(2) }}
+                </strong>
+              </article>
+
+              <article class="goal-card">
+                <span>Total R</span>
+                <strong>{{ Number(totalR || 0).toFixed(2) }}R</strong>
+              </article>
+
+              <article class="goal-card">
+                <span>Total USD</span>
+                <strong>${{ Number(totalUSD || 0).toFixed(2) }}</strong>
+              </article>
+
+              <article class="goal-card">
+                <span>Restan R</span>
+                <strong>{{ Number(remainingR || 0).toFixed(2) }}R</strong>
+              </article>
+
+              <article class="goal-card">
+                <span>Restan USD</span>
+                <strong>${{ Number(remainingUSD || 0).toFixed(2) }}</strong>
+              </article>
+            </div>
+
+            <div class="progress-wrap">
+              <div class="progress-labels">
+                <span>Avance hacia meta</span>
+                <strong>{{ Number(targetProgressPercent || 0).toFixed(0) }}% · Ganado ${{ Number(advancedGoalUSD || 0).toFixed(2) }}</strong>
+              </div>
+
+              <div class="progress-bar">
+                <div
+                  class="progress-fill progress-fill-goal"
+                  :style="{ width: goalProgressPercent + '%' }"
+                ></div>
+              </div>
+            </div>
+
+            <div class="stats-mini-grid">
+              <article class="mini-stat">
+                <span>Trades hoy</span>
+                <strong>{{ todaysTrades }}</strong>
+              </article>
+
+              <article class="mini-stat">
+                <span>R hoy</span>
+                <strong>{{ Number(todaysR || 0).toFixed(2) }}</strong>
+              </article>
+
+              <article class="mini-stat">
+                <span>Win Rate</span>
+                <strong>{{ Number(winRate || 0).toFixed(0) }}%</strong>
+              </article>
+            </div>
+          </section>
+        </div>
       </section>
 
       <section class="panel trade-panel">
@@ -264,36 +352,73 @@
           </div>
         </div>
 
-        <div class="trade-form-grid">
-          <input v-model="tradeForm.date" type="date" />
+        <section
+          class="emotion-check-card"
+          :class="{
+            'emotion-check-card-ready': emotionChecklist.state === 'calm',
+            'emotion-check-card-blocked': emotionChecklist.state === 'anxious'
+          }"
+        >
+          <div class="emotion-check-copy">
+            <span class="emotion-check-label">Checklist emocional</span>
+            <strong>{{ emotionChecklistTitle }}</strong>
+            <p>{{ emotionChecklistMessage }}</p>
+          </div>
 
-          <select v-model="tradeForm.session">
+          <div class="emotion-toggle-group">
+            <button
+              class="emotion-toggle-btn"
+              :class="{ active: emotionChecklist.state === 'calm' }"
+              @click="setEmotionState('calm')"
+            >
+              Estas calmado
+            </button>
+
+            <button
+              class="emotion-toggle-btn emotion-toggle-btn-danger"
+              :class="{ active: emotionChecklist.state === 'anxious' }"
+              @click="setEmotionState('anxious')"
+            >
+              Estas ansioso
+            </button>
+          </div>
+        </section>
+
+        <p v-if="tradeBlockingReason" class="trade-blocking-alert" :class="{ bad: isTradeRegistrationBlocked }">
+          {{ tradeBlockingReason }}
+        </p>
+
+        <div class="trade-form-grid">
+          <input v-model="tradeForm.date" type="date" :disabled="isTradeRegistrationBlocked" />
+
+          <select v-model="tradeForm.session" :disabled="isTradeRegistrationBlocked">
             <option disabled value="">Sesión</option>
             <option>London</option>
             <option>New York</option>
             <option>Asia</option>
           </select>
 
-          <select v-model="tradeForm.direction">
+          <select v-model="tradeForm.direction" :disabled="isTradeRegistrationBlocked">
             <option disabled value="">Dirección</option>
             <option>Long</option>
             <option>Short</option>
           </select>
 
-          <input v-model="tradeForm.setup" type="text" placeholder="Setup" />
+          <input v-model="tradeForm.setup" type="text" placeholder="Setup" :disabled="isTradeRegistrationBlocked" />
 
           <input
             v-model.number="tradeForm.resultR"
             type="number"
             step="any"
             placeholder="Resultado R"
+            :disabled="isTradeRegistrationBlocked"
           />
 
-          <input v-model="tradeForm.note" type="text" placeholder="Nota" />
+          <input v-model="tradeForm.note" type="text" placeholder="Nota" :disabled="isTradeRegistrationBlocked" />
         </div>
 
         <div class="trade-form-actions">
-          <button class="primary-btn" @click="saveTrade">
+          <button class="primary-btn" :disabled="isTradeRegistrationBlocked" @click="saveTrade">
             {{ isEditing ? "Actualizar trade" : "Guardar trade" }}
           </button>
 
