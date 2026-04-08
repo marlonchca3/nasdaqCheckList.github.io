@@ -24,6 +24,9 @@ export default {
       showCelebration: false,
       celebrationPlayed: false,
       taskVoiceMuted: false,
+      newsAlertsEnabled: true,
+      notificationPermission: "default",
+      lastNewsAlertCheckKey: "",
 
       newTask: "",
       rValue: 50,
@@ -72,12 +75,19 @@ export default {
       emotionChecklist: {
         state: ""
       },
+      newsReminderForm: {
+        title: "",
+        date: new Date().toISOString().slice(0, 10),
+        time: ""
+      },
+      newsReminders: [],
 
       tradeForm: {
         date: new Date().toISOString().slice(0, 10),
         session: "",
         direction: "",
         setup: "",
+        ruleStatus: "",
         resultR: 1,
         note: ""
       },
@@ -259,8 +269,136 @@ export default {
       return "Este filtro emocional es obligatorio para abrir la operativa del día.";
     },
 
+    ruleChecklistTitle() {
+      switch (this.tradeForm.ruleStatus) {
+        case "followed":
+          return "Seguiste tus reglas";
+        case "partial":
+          return "Seguiste las reglas parcialmente";
+        case "missed":
+          return "No seguiste tus reglas";
+        default:
+          return "Marca cómo ejecutaste el trade";
+      }
+    },
+
+    ruleChecklistMessage() {
+      switch (this.tradeForm.ruleStatus) {
+        case "followed":
+          return "Trade validado con disciplina completa. La tarjeta queda verde y suma fuerte a tu progreso semanal.";
+        case "partial":
+          return "Hubo cumplimiento incompleto. La tarjeta queda amarilla y suma progreso parcial en la semana.";
+        case "missed":
+          return "El trade rompió el plan. La tarjeta queda roja y no suma avance semanal.";
+        default:
+          return "Debes dejar claro si respetaste el plan antes de guardar el trade.";
+      }
+    },
+
+    ruleChecklistCardClass() {
+      return {
+        "rule-check-card-followed": this.tradeForm.ruleStatus === "followed",
+        "rule-check-card-partial": this.tradeForm.ruleStatus === "partial",
+        "rule-check-card-missed": this.tradeForm.ruleStatus === "missed"
+      };
+    },
+
     taskVoiceStatusLabel() {
       return this.taskVoiceMuted ? "Tareas en mudo" : "Voz de tareas activa";
+    },
+
+    hasBrowserNotificationSupport() {
+      return typeof window !== "undefined" && "Notification" in window;
+    },
+
+    newsAlertsStatusLabel() {
+      if (!this.newsAlertsEnabled) {
+        return "Alertas Nasdaq en pausa";
+      }
+
+      if (!this.hasBrowserNotificationSupport) {
+        return "Solo aviso por voz";
+      }
+
+      if (this.notificationPermission === "granted") {
+        return "Alertas Nasdaq activas";
+      }
+
+      if (this.notificationPermission === "denied") {
+        return "Notificaciones bloqueadas";
+      }
+
+      return "Falta permiso del navegador";
+    },
+
+    sortedNewsReminders() {
+      return [...this.newsReminders].sort((left, right) => {
+        const leftDate = this.getReminderDateTime(left)?.getTime() || 0;
+        const rightDate = this.getReminderDateTime(right)?.getTime() || 0;
+        return leftDate - rightDate;
+      });
+    },
+
+    nextNewsReminder() {
+      this.currentTime;
+
+      return this.sortedNewsReminders.find(reminder => {
+        const reminderDate = this.getReminderDateTime(reminder);
+        return reminderDate && reminderDate.getTime() >= Date.now();
+      }) || null;
+    },
+
+    newsAlertsHelpText() {
+      if (!this.newsAlertsEnabled) {
+        return "Las alertas manuales están en pausa. Vuelve a activarlas para recibir avisos 15 minutos antes.";
+      }
+
+      if (!this.hasBrowserNotificationSupport) {
+        return "Tu navegador no soporta notificaciones. La app puede avisarte por voz mientras esté abierta.";
+      }
+
+      if (this.notificationPermission === "granted") {
+        return "Tus recordatorios manuales avisarán por notificación y voz 15 minutos antes.";
+      }
+
+      if (this.notificationPermission === "denied") {
+        return "Las notificaciones están bloqueadas. Revisa el permiso del navegador o usa el aviso por voz con la app abierta.";
+      }
+
+      return "Activa el permiso del navegador si quieres recibir una notificación además del aviso por voz.";
+    },
+
+    currentWeekRuleStats() {
+      const today = new Date();
+      const day = today.getDay();
+      const mondayOffset = day === 0 ? -6 : 1 - day;
+      const start = new Date(today);
+      start.setHours(0, 0, 0, 0);
+      start.setDate(today.getDate() + mondayOffset);
+
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      end.setHours(23, 59, 59, 999);
+
+      const trades = this.trades.filter(trade => {
+        const tradeDate = new Date(`${trade.date}T00:00:00`);
+        return !Number.isNaN(tradeDate.getTime()) && tradeDate >= start && tradeDate <= end;
+      });
+
+      const followed = trades.filter(trade => trade.ruleStatus === "followed").length;
+      const partial = trades.filter(trade => trade.ruleStatus === "partial").length;
+      const missed = trades.filter(trade => trade.ruleStatus === "missed").length;
+      const score = followed + partial * 0.5;
+      const percent = trades.length ? Math.round((score / trades.length) * 100) : 0;
+
+      return {
+        trades,
+        followed,
+        partial,
+        missed,
+        percent,
+        label: `${followed} bien · ${partial} parcial · ${missed} fuera`
+      };
     },
 
     todaysTrades() {
@@ -609,6 +747,12 @@ export default {
 
   mounted() {
     this.loadVoices();
+    if (this.hasBrowserNotificationSupport) {
+      this.notificationPermission = Notification.permission;
+    } else {
+      this.notificationPermission = "unsupported";
+    }
+
     window.speechSynthesis.onvoiceschanged = () => {
       this.loadVoices();
     };
@@ -670,13 +814,15 @@ export default {
         this.isHydratingFromCloud = true;
 
         this.tasks = Array.isArray(data.tasks) ? data.tasks : [];
-        this.trades = Array.isArray(data.trades) ? data.trades : [];
+        this.trades = this.normalizeTrades(data.trades);
         this.rValue = Number(data.rValue) > 0 ? Number(data.rValue) : 50;
         this.goalUSD = Number(data.goalUSD) > 0 ? Number(data.goalUSD) : 3000;
         this.pomodoro = this.normalizePomodoroState(data.pomodoro);
         this.pomodoroGoalCelebrated = this.pomodoro.totalFocusedSeconds >= this.pomodoroTargetSeconds;
         this.emotionChecklist = this.normalizeEmotionChecklist(data.emotionChecklist);
         this.taskVoiceMuted = Boolean(data.taskVoiceMuted);
+        this.newsReminders = this.normalizeNewsReminders(data.newsReminders);
+        this.newsAlertsEnabled = data.newsAlertsEnabled !== false;
 
         this.isHydratingFromCloud = false;
         this.syncState = "synced";
@@ -684,6 +830,8 @@ export default {
           hour: "2-digit",
           minute: "2-digit"
         });
+
+        this.checkNasdaqNewsAlerts(new Date());
       });
     });
   },
@@ -698,10 +846,62 @@ export default {
   },
 
   methods: {
+    getDefaultNewsReminderForm() {
+      return {
+        title: "",
+        date: new Date().toISOString().slice(0, 10),
+        time: ""
+      };
+    },
+
     getDefaultEmotionChecklist() {
       return {
         state: ""
       };
+    },
+
+    getDefaultTradeForm() {
+      return {
+        date: new Date().toISOString().slice(0, 10),
+        session: "",
+        direction: "",
+        setup: "",
+        ruleStatus: "",
+        resultR: 1,
+        note: ""
+      };
+    },
+
+    normalizeNewsReminder(rawReminder) {
+      const title = String(rawReminder?.title || "").trim();
+      const date = /^\d{4}-\d{2}-\d{2}$/.test(rawReminder?.date || "")
+        ? rawReminder.date
+        : new Date().toISOString().slice(0, 10);
+      const time = /^\d{2}:\d{2}$/.test(rawReminder?.time || "")
+        ? rawReminder.time
+        : "";
+
+      return {
+        id: String(rawReminder?.id || `${Date.now()}-${Math.random()}`),
+        title,
+        date,
+        time,
+        notifyBeforeMinutes: this.normalizePositiveNumber(rawReminder?.notifyBeforeMinutes, 15),
+        alertedAt: rawReminder?.alertedAt ? String(rawReminder.alertedAt) : "",
+        sourceType: "manual",
+        sourceLabel: String(rawReminder?.sourceLabel || "Manual"),
+        symbol: String(rawReminder?.symbol || "").toUpperCase(),
+        meta: String(rawReminder?.meta || ""),
+        url: String(rawReminder?.url || "")
+      };
+    },
+
+    normalizeNewsReminders(rawReminders) {
+      if (!Array.isArray(rawReminders)) return [];
+
+      return rawReminders
+        .map(reminder => this.normalizeNewsReminder(reminder))
+        .filter(reminder => reminder.sourceType !== "api" && reminder.title && reminder.date && reminder.time);
     },
 
     getDefaultPomodoroState() {
@@ -739,6 +939,35 @@ export default {
       return nextEmotionChecklist;
     },
 
+    normalizeRuleStatus(value) {
+      return ["followed", "partial", "missed"].includes(value) ? value : "";
+    },
+
+    normalizeTrade(rawTrade) {
+      const resultR = this.getSafeR(rawTrade?.resultR);
+
+      return {
+        id: rawTrade?.id || Date.now() + Math.random(),
+        date: /^\d{4}-\d{2}-\d{2}$/.test(rawTrade?.date || "")
+          ? rawTrade.date
+          : new Date().toISOString().slice(0, 10),
+        session: String(rawTrade?.session || ""),
+        direction: String(rawTrade?.direction || ""),
+        setup: String(rawTrade?.setup || ""),
+        ruleStatus: this.normalizeRuleStatus(rawTrade?.ruleStatus),
+        resultR,
+        resultUSD: Number.isFinite(Number(rawTrade?.resultUSD))
+          ? Number(rawTrade.resultUSD)
+          : resultR * this.safeRValue,
+        note: String(rawTrade?.note || "")
+      };
+    },
+
+    normalizeTrades(rawTrades) {
+      if (!Array.isArray(rawTrades)) return [];
+      return rawTrades.map(trade => this.normalizeTrade(trade));
+    },
+
     persistEmotionChecklist() {
       if (!this.isHydratingFromCloud && !this.isLoadingLocalData) {
         this.justSavedLocallyAt = Date.now();
@@ -771,9 +1000,190 @@ export default {
       this.scheduleCloudSave();
     },
 
+    persistNewsReminders() {
+      if (!this.isHydratingFromCloud && !this.isLoadingLocalData) {
+        this.justSavedLocallyAt = Date.now();
+      }
+
+      try {
+        localStorage.setItem("nasdaq_news_reminders", JSON.stringify(this.newsReminders));
+      } catch (error) {
+        console.error("Error al guardar recordatorios Nasdaq:", error);
+      }
+
+      this.scheduleCloudSave();
+    },
+
+    persistNewsAlertsEnabled() {
+      if (!this.isHydratingFromCloud && !this.isLoadingLocalData) {
+        this.justSavedLocallyAt = Date.now();
+      }
+
+      try {
+        localStorage.setItem("nasdaq_news_alerts_enabled", JSON.stringify(this.newsAlertsEnabled));
+      } catch (error) {
+        console.error("Error al guardar el estado de alertas Nasdaq:", error);
+      }
+
+      this.scheduleCloudSave();
+    },
+
     toggleTaskVoiceMuted() {
       this.taskVoiceMuted = !this.taskVoiceMuted;
       this.persistTaskVoiceMuted();
+    },
+
+    toggleNewsAlerts() {
+      this.newsAlertsEnabled = !this.newsAlertsEnabled;
+      this.persistNewsAlertsEnabled();
+
+      if (this.newsAlertsEnabled) {
+        this.checkNasdaqNewsAlerts(new Date());
+      }
+    },
+
+    async requestNewsNotificationPermission() {
+      if (!this.hasBrowserNotificationSupport) {
+        alert("Tu navegador no soporta notificaciones. La app solo podrá avisarte por voz si está abierta.");
+        return;
+      }
+
+      try {
+        this.notificationPermission = await Notification.requestPermission();
+      } catch (error) {
+        console.error("Error al pedir permiso de notificaciones:", error);
+        alert("No se pudo solicitar el permiso de notificaciones en este navegador.");
+      }
+    },
+
+    resetNewsReminderForm() {
+      this.newsReminderForm = this.getDefaultNewsReminderForm();
+    },
+
+    addNewsReminder() {
+      const title = this.newsReminderForm.title.trim();
+      const draftReminder = this.normalizeNewsReminder({
+        ...this.newsReminderForm,
+        title,
+        id: `${Date.now()}-${Math.random()}`,
+        sourceType: "manual",
+        sourceLabel: "Manual"
+      });
+      const reminderDate = this.getReminderDateTime(draftReminder);
+
+      if (!title || !draftReminder.date || !draftReminder.time) {
+        alert("Completa evento, fecha y hora para crear el recordatorio Nasdaq.");
+        return;
+      }
+
+      if (!reminderDate || reminderDate.getTime() <= Date.now()) {
+        alert("El recordatorio debe apuntar a una hora futura.");
+        return;
+      }
+
+      this.newsReminders = [...this.newsReminders, draftReminder];
+      this.persistNewsReminders();
+      this.resetNewsReminderForm();
+    },
+
+    removeNewsReminder(id) {
+      this.newsReminders = this.newsReminders.filter(reminder => reminder.id !== id);
+      this.persistNewsReminders();
+    },
+
+    getReminderDateTime(reminder) {
+      if (!reminder?.date || !reminder?.time) return null;
+
+      const reminderDate = new Date(`${reminder.date}T${reminder.time}:00`);
+      return Number.isNaN(reminderDate.getTime()) ? null : reminderDate;
+    },
+
+    formatReminderDateTime(reminder) {
+      const reminderDate = this.getReminderDateTime(reminder);
+
+      if (!reminderDate) return "Fecha inválida";
+
+      return reminderDate.toLocaleString("es-PE", {
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      });
+    },
+
+    getReminderStatus(reminder) {
+      this.currentTime;
+
+      const reminderDate = this.getReminderDateTime(reminder);
+      if (!reminderDate) return "Fecha inválida";
+
+      const alertDate = new Date(reminderDate.getTime() - reminder.notifyBeforeMinutes * 60 * 1000);
+      const now = Date.now();
+      const minutesUntilEvent = Math.ceil((reminderDate.getTime() - now) / 60000);
+
+      if (reminder.alertedAt) {
+        return "Aviso enviado";
+      }
+
+      if (reminderDate.getTime() <= now) {
+        return "Evento pasado";
+      }
+
+      if (alertDate.getTime() <= now) {
+        return `Ventana activa · faltan ${Math.max(minutesUntilEvent, 0)} min`;
+      }
+
+      return `Manual · avisa ${reminder.notifyBeforeMinutes} min antes`;
+    },
+
+    sendNewsReminderAlert(reminder, reminderDate) {
+      const reminderTime = reminderDate.toLocaleTimeString("es-PE", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      });
+      const message = `${reminder.title} empieza a las ${reminderTime}.`;
+
+      if (this.hasBrowserNotificationSupport && this.notificationPermission === "granted") {
+        new Notification("Alerta Nasdaq", {
+          body: message,
+          tag: `nasdaq-reminder-${reminder.id}`
+        });
+      }
+
+      this.speakText(`Atención. ${reminder.title} comienza en quince minutos.`);
+    },
+
+    checkNasdaqNewsAlerts(referenceDate = new Date()) {
+      if (!this.newsAlertsEnabled || !this.newsReminders.length) return;
+
+      const now = referenceDate instanceof Date ? referenceDate : new Date(referenceDate);
+      const triggeredIds = [];
+
+      this.newsReminders.forEach(reminder => {
+        if (reminder.alertedAt) return;
+
+        const reminderDate = this.getReminderDateTime(reminder);
+        if (!reminderDate) return;
+
+        const alertDate = new Date(reminderDate.getTime() - reminder.notifyBeforeMinutes * 60 * 1000);
+
+        if (now.getTime() >= alertDate.getTime() && now.getTime() < reminderDate.getTime()) {
+          triggeredIds.push(reminder.id);
+          this.sendNewsReminderAlert(reminder, reminderDate);
+        }
+      });
+
+      if (!triggeredIds.length) return;
+
+      this.newsReminders = this.newsReminders.map(reminder => (
+        triggeredIds.includes(reminder.id)
+          ? { ...reminder, alertedAt: now.toISOString() }
+          : reminder
+      ));
+
+      this.persistNewsReminders();
     },
 
     setEmotionState(state) {
@@ -784,6 +1194,34 @@ export default {
       }
 
       this.persistEmotionChecklist();
+    },
+
+    setTradeRuleStatus(status) {
+      this.tradeForm = {
+        ...this.tradeForm,
+        ruleStatus: this.normalizeRuleStatus(status)
+      };
+    },
+
+    getRuleStatusLabel(status) {
+      switch (status) {
+        case "followed":
+          return "Seguiste";
+        case "partial":
+          return "Parcial";
+        case "missed":
+          return "No seguiste";
+        default:
+          return "Sin marcar";
+      }
+    },
+
+    getRuleStatusBadgeClass(status) {
+      return {
+        "rule-badge-followed": status === "followed",
+        "rule-badge-partial": status === "partial",
+        "rule-badge-missed": status === "missed"
+      };
     },
 
     getPomodoroModeSeconds(mode, pomodoroState = this.pomodoro) {
@@ -1104,6 +1542,7 @@ export default {
 
     updateClock() {
       const now = new Date();
+      const newsCheckKey = now.toISOString().slice(0, 16);
 
       this.currentTime = now.toLocaleTimeString("es-PE", {
         hour12: false
@@ -1117,6 +1556,11 @@ export default {
       if (seconds === 0 && minute % 5 === 0 && minute !== this.lastSpokenMinute) {
         this.lastSpokenMinute = minute;
         this.announceCompletedTasks();
+      }
+
+      if (newsCheckKey !== this.lastNewsAlertCheckKey) {
+        this.lastNewsAlertCheckKey = newsCheckKey;
+        this.checkNasdaqNewsAlerts(now);
       }
     },
 
@@ -1149,7 +1593,7 @@ export default {
         const savedTrades = localStorage.getItem("nasdaq_trades_curve");
         if (savedTrades) {
           const parsedTrades = JSON.parse(savedTrades);
-          this.trades = Array.isArray(parsedTrades) ? parsedTrades : [];
+          this.trades = this.normalizeTrades(parsedTrades);
         }
 
         const savedRValue = localStorage.getItem("nasdaq_r_value_only_tasks");
@@ -1179,11 +1623,23 @@ export default {
         if (savedTaskVoiceMuted) {
           this.taskVoiceMuted = Boolean(JSON.parse(savedTaskVoiceMuted));
         }
+
+        const savedNewsReminders = localStorage.getItem("nasdaq_news_reminders");
+        if (savedNewsReminders) {
+          this.newsReminders = this.normalizeNewsReminders(JSON.parse(savedNewsReminders));
+        }
+
+        const savedNewsAlertsEnabled = localStorage.getItem("nasdaq_news_alerts_enabled");
+        if (savedNewsAlertsEnabled) {
+          this.newsAlertsEnabled = JSON.parse(savedNewsAlertsEnabled) !== false;
+        }
       } catch (error) {
         console.error("Error al leer datos locales:", error);
       } finally {
         this.isLoadingLocalData = false;
       }
+
+      this.checkNasdaqNewsAlerts(new Date());
     },
 
     getSafeR(value) {
@@ -1285,6 +1741,8 @@ export default {
             pomodoro: this.pomodoro,
             emotionChecklist: this.emotionChecklist,
             taskVoiceMuted: this.taskVoiceMuted,
+            newsReminders: this.newsReminders,
+            newsAlertsEnabled: this.newsAlertsEnabled,
             rValue: this.safeRValue,
             goalUSD: this.safeGoalUSD,
             updatedAt: serverTimestamp(),
@@ -1385,14 +1843,7 @@ export default {
     },
 
     resetTradeForm() {
-      this.tradeForm = {
-        date: new Date().toISOString().slice(0, 10),
-        session: "",
-        direction: "",
-        setup: "",
-        resultR: 1,
-        note: ""
-      };
+      this.tradeForm = this.getDefaultTradeForm();
       this.isEditing = false;
       this.editingTradeId = null;
     },
@@ -1411,6 +1862,7 @@ export default {
         session: this.tradeForm.session,
         direction: this.tradeForm.direction,
         setup: this.tradeForm.setup.trim(),
+        ruleStatus: this.normalizeRuleStatus(this.tradeForm.ruleStatus),
         resultR,
         resultUSD: resultR * this.safeRValue,
         note: this.tradeForm.note.trim()
@@ -1418,6 +1870,11 @@ export default {
 
       if (!tradePayload.date || !tradePayload.session || !tradePayload.direction) {
         alert("Completa fecha, sesión y dirección.");
+        return;
+      }
+
+      if (!tradePayload.ruleStatus) {
+        alert("Marca si seguiste la regla, la seguiste parcialmente o no la seguiste.");
         return;
       }
 
@@ -1439,6 +1896,7 @@ export default {
         session: trade.session,
         direction: trade.direction,
         setup: trade.setup,
+        ruleStatus: this.normalizeRuleStatus(trade.ruleStatus),
         resultR: trade.resultR,
         note: trade.note
       };

@@ -264,6 +264,86 @@
             </div>
           </section>
 
+          <section class="panel news-panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Alertas</p>
+                <h2>Noticias Nasdaq</h2>
+              </div>
+
+              <div class="header-pills">
+                <span class="pill">{{ newsAlertsStatusLabel }}</span>
+                <span v-if="nextNewsReminder" class="pill">
+                  Próxima {{ formatReminderDateTime(nextNewsReminder) }}
+                </span>
+              </div>
+            </div>
+
+            <p class="news-panel-copy">
+              Crea alertas manuales para CPI, Powell, NFP o cualquier evento que quieras vigilar y la app te avisa 15 minutos antes.
+            </p>
+
+            <p class="news-api-feedback">
+              {{ newsAlertsHelpText }}
+            </p>
+
+            <div class="news-toolbar">
+              <button class="secondary-btn" @click="toggleNewsAlerts">
+                {{ newsAlertsEnabled ? 'Pausar alertas' : 'Activar alertas' }}
+              </button>
+              <button
+                v-if="hasBrowserNotificationSupport && notificationPermission !== 'granted'"
+                class="secondary-btn"
+                @click="requestNewsNotificationPermission"
+              >
+                {{ notificationPermission === 'denied' ? 'Revisar permisos' : 'Permitir notificaciones' }}
+              </button>
+            </div>
+
+            <div class="news-form-grid">
+              <input
+                v-model="newsReminderForm.title"
+                type="text"
+                placeholder="Agregar alerta manual: CPI, Powell, NVIDIA earnings"
+                @keyup.enter="addNewsReminder"
+              />
+              <input v-model="newsReminderForm.date" type="date" />
+              <input v-model="newsReminderForm.time" type="time" />
+              <button class="primary-btn" @click="addNewsReminder">
+                Agregar alerta
+              </button>
+            </div>
+
+            <div v-if="sortedNewsReminders.length" class="news-reminder-list">
+              <article
+                v-for="reminder in sortedNewsReminders"
+                :key="reminder.id"
+                class="news-reminder-card"
+              >
+                <div class="news-reminder-copy">
+                  <strong>{{ reminder.title }}</strong>
+                  <small class="news-reminder-source">{{ reminder.sourceLabel }}</small>
+                  <span>{{ formatReminderDateTime(reminder) }}</span>
+                  <span v-if="reminder.meta" class="news-reminder-meta">{{ reminder.meta }}</span>
+                </div>
+
+                <div class="news-reminder-actions">
+                  <span class="news-reminder-badge">{{ getReminderStatus(reminder) }}</span>
+                  <button
+                    class="tiny-btn danger"
+                    @click="removeNewsReminder(reminder.id)"
+                  >
+                    Borrar
+                  </button>
+                </div>
+              </article>
+            </div>
+
+            <p v-else class="news-reminder-empty">
+              No hay alertas cargadas todavía. Agrega tu próximo evento manual y la app te avisará 15 minutos antes.
+            </p>
+          </section>
+
           <section class="panel">
             <div class="panel-header">
               <div>
@@ -396,6 +476,60 @@
           </div>
         </section>
 
+        <section class="rule-check-card" :class="ruleChecklistCardClass">
+          <div class="rule-check-copy">
+            <span class="rule-check-label">Cumplimiento de reglas</span>
+            <strong>{{ ruleChecklistTitle }}</strong>
+            <p>{{ ruleChecklistMessage }}</p>
+          </div>
+
+          <div class="rule-status-grid">
+            <button
+              class="rule-status-card rule-status-card-followed"
+              :class="{ active: tradeForm.ruleStatus === 'followed' }"
+              :disabled="isTradeRegistrationBlocked"
+              @click="setTradeRuleStatus('followed')"
+            >
+              <strong>Seguí</strong>
+              <span>Tarjeta verde</span>
+            </button>
+
+            <button
+              class="rule-status-card rule-status-card-partial"
+              :class="{ active: tradeForm.ruleStatus === 'partial' }"
+              :disabled="isTradeRegistrationBlocked"
+              @click="setTradeRuleStatus('partial')"
+            >
+              <strong>Parcial</strong>
+              <span>Tarjeta amarilla</span>
+            </button>
+
+            <button
+              class="rule-status-card rule-status-card-missed"
+              :class="{ active: tradeForm.ruleStatus === 'missed' }"
+              :disabled="isTradeRegistrationBlocked"
+              @click="setTradeRuleStatus('missed')"
+            >
+              <strong>No seguí</strong>
+              <span>Tarjeta roja</span>
+            </button>
+          </div>
+
+          <div class="progress-wrap rule-progress-wrap">
+            <div class="progress-labels">
+              <span>Disciplina semanal</span>
+              <strong>{{ currentWeekRuleStats.percent }}% · {{ currentWeekRuleStats.label }}</strong>
+            </div>
+
+            <div class="progress-bar progress-bar-rule">
+              <div
+                class="progress-fill progress-fill-rule"
+                :style="{ width: currentWeekRuleStats.percent + '%' }"
+              ></div>
+            </div>
+          </div>
+        </section>
+
         <p v-if="tradeBlockingReason" class="trade-blocking-alert" :class="{ bad: isTradeRegistrationBlocked }">
           {{ tradeBlockingReason }}
         </p>
@@ -447,6 +581,7 @@
                 <th>Sesión</th>
                 <th>Dirección</th>
                 <th>Setup</th>
+                <th>Reglas</th>
                 <th>R</th>
                 <th>USD</th>
                 <th>Nota</th>
@@ -460,6 +595,11 @@
                 <td>{{ trade.session }}</td>
                 <td>{{ trade.direction }}</td>
                 <td>{{ trade.setup }}</td>
+                <td>
+                  <span class="rule-badge" :class="getRuleStatusBadgeClass(trade.ruleStatus)">
+                    {{ getRuleStatusLabel(trade.ruleStatus) }}
+                  </span>
+                </td>
                 <td :class="{ positive: trade.resultR > 0, negative: trade.resultR < 0 }">
                   {{ Number(trade.resultR || 0).toFixed(2) }}
                 </td>
@@ -474,7 +614,7 @@
               </tr>
 
               <tr v-if="filteredTrades.length === 0">
-                <td colspan="8" class="empty-row">Aún no hay trades registrados</td>
+                <td colspan="9" class="empty-row">Aún no hay trades registrados</td>
               </tr>
             </tbody>
           </table>

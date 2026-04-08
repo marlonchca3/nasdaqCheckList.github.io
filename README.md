@@ -25,6 +25,16 @@ See [Vite Configuration Reference](https://vite.dev/config/).
 npm install
 ```
 
+## Alertas Nasdaq manuales
+
+La app permite crear recordatorios manuales para eventos importantes como CPI, FOMC, Powell o earnings y avisarte 15 minutos antes.
+
+Las alertas usan:
+
+- notificaciones del navegador, si el usuario da permiso
+- voz, mientras la app esté abierta
+- persistencia local y sincronización con Firebase del mismo modo que el resto del tablero
+
 ## Firebase Auth
 
 Para que el inicio de sesión con Google funcione, el dominio donde cargas la app debe estar agregado en Firebase Authentication.
