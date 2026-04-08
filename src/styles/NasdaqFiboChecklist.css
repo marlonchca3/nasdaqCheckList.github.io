@@ -669,6 +669,44 @@ h2 {
   align-items: flex-start;
 }
 
+.trade-panel-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.trade-cooldown-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(15, 23, 42, 0.82);
+}
+
+.trade-cooldown-chip strong {
+  color: #f8fafc;
+  font-size: 13px;
+}
+
+.trade-cooldown-chip span {
+  color: #cbd5e1;
+  font-size: 12px;
+}
+
+.trade-cooldown-chip-partial {
+  border-color: rgba(250, 204, 21, 0.34);
+  background: rgba(161, 98, 7, 0.22);
+}
+
+.trade-cooldown-chip-missed {
+  border-color: rgba(248, 113, 113, 0.34);
+  background: rgba(127, 29, 29, 0.22);
+}
+
 .calendar-nav {
   display: flex;
   align-items: center;
@@ -1389,6 +1427,29 @@ h2 {
   background: linear-gradient(180deg, rgba(226, 232, 240, 0.95), rgba(241, 245, 249, 0.95));
 }
 
+.light-mode .trade-cooldown-chip {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(51, 65, 85, 0.12);
+}
+
+.light-mode .trade-cooldown-chip strong {
+  color: #0f172a;
+}
+
+.light-mode .trade-cooldown-chip span {
+  color: #475569;
+}
+
+.light-mode .trade-cooldown-chip-partial {
+  background: rgba(254, 249, 195, 0.96);
+  border-color: rgba(202, 138, 4, 0.2);
+}
+
+.light-mode .trade-cooldown-chip-missed {
+  background: rgba(254, 226, 226, 0.96);
+  border-color: rgba(220, 38, 38, 0.18);
+}
+
 .light-mode .curve-svg {
   background: rgba(241, 245, 249, 0.8);
 }
@@ -1665,6 +1726,10 @@ h2 {
     align-items: stretch;
   }
 
+  .trade-panel-tools {
+    justify-content: stretch;
+  }
+
   .rule-status-grid {
     grid-template-columns: 1fr;
   }
@@ -1790,6 +1855,11 @@ h2 {
 
   .auth-right {
     width: 100%;
+  }
+
+  .trade-panel-tools {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .hero-top,

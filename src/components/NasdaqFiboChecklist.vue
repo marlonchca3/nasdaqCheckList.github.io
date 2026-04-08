@@ -434,13 +434,20 @@
             <h2>Trades</h2>
           </div>
 
-          <div class="trade-filters">
+          <div class="trade-panel-tools">
+            <div v-if="tradeCooldownActive" class="trade-cooldown-chip" :class="tradeCooldownChipClass">
+              <strong>{{ tradeCooldown.reason === 'partial' ? 'Bloqueo 10m' : 'Bloqueo 20m' }}</strong>
+              <span>{{ tradeCooldownLabel }} restantes</span>
+            </div>
+
+            <div class="trade-filters">
             <select v-model="sessionFilter">
               <option>All</option>
               <option>London</option>
               <option>New York</option>
               <option>Asia</option>
             </select>
+            </div>
           </div>
         </div>
 

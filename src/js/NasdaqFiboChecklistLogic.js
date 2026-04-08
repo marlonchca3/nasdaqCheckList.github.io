@@ -75,6 +75,11 @@ export default {
       emotionChecklist: {
         state: ""
       },
+      tradeCooldown: {
+        until: "",
+        reason: ""
+      },
+      lastAnnouncedTradeCooldownUntil: "",
       newsReminderForm: {
         title: "",
         date: new Date().toISOString().slice(0, 10),
@@ -229,13 +234,56 @@ export default {
       return "Listo para continuar";
     },
 
+    tradeCooldownRemainingSeconds() {
+      this.currentTime;
+
+      if (!this.tradeCooldown.until) return 0;
+
+      const cooldownUntil = new Date(this.tradeCooldown.until);
+      if (Number.isNaN(cooldownUntil.getTime())) return 0;
+
+      return Math.max(Math.ceil((cooldownUntil.getTime() - Date.now()) / 1000), 0);
+    },
+
+    tradeCooldownActive() {
+      return this.tradeCooldownRemainingSeconds > 0;
+    },
+
+    tradeCooldownLabel() {
+      const totalSeconds = this.tradeCooldownRemainingSeconds;
+      if (!totalSeconds) return "";
+
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+    },
+
+    tradeCooldownChipClass() {
+      return {
+        "trade-cooldown-chip-partial": this.tradeCooldown.reason === "partial",
+        "trade-cooldown-chip-missed": this.tradeCooldown.reason === "missed"
+      };
+    },
+
     isTradeRegistrationBlocked() {
-      return this.emotionChecklist.state === "anxious";
+      return this.emotionChecklist.state === "anxious" || this.tradeCooldownActive;
     },
 
     tradeBlockingReason() {
       if (this.emotionChecklist.state === "anxious") {
         return "Estás ansioso. No puedes operar ni registrar trades hasta volver a estar calmado.";
+      }
+
+      if (this.tradeCooldownActive) {
+        if (this.tradeCooldown.reason === "partial") {
+          return `Seguiste las reglas parcialmente. Quedas bloqueado por 10 minutos. Tiempo restante ${this.tradeCooldownLabel}.`;
+        }
+
+        if (this.tradeCooldown.reason === "missed") {
+          return `No seguiste las reglas. Quedas bloqueado por 20 minutos. Tiempo restante ${this.tradeCooldownLabel}.`;
+        }
+
+        return `Operativa bloqueada temporalmente. Tiempo restante ${this.tradeCooldownLabel}.`;
       }
 
       if (!this.emotionChecklist.state) {
@@ -820,6 +868,7 @@ export default {
         this.pomodoro = this.normalizePomodoroState(data.pomodoro);
         this.pomodoroGoalCelebrated = this.pomodoro.totalFocusedSeconds >= this.pomodoroTargetSeconds;
         this.emotionChecklist = this.normalizeEmotionChecklist(data.emotionChecklist);
+        this.tradeCooldown = this.normalizeTradeCooldown(data.tradeCooldown);
         this.taskVoiceMuted = Boolean(data.taskVoiceMuted);
         this.newsReminders = this.normalizeNewsReminders(data.newsReminders);
         this.newsAlertsEnabled = data.newsAlertsEnabled !== false;
@@ -857,6 +906,13 @@ export default {
     getDefaultEmotionChecklist() {
       return {
         state: ""
+      };
+    },
+
+    getDefaultTradeCooldown() {
+      return {
+        until: "",
+        reason: ""
       };
     },
 
@@ -939,6 +995,20 @@ export default {
       return nextEmotionChecklist;
     },
 
+    normalizeTradeCooldown(rawTradeCooldown) {
+      const nextTradeCooldown = {
+        ...this.getDefaultTradeCooldown(),
+        ...(rawTradeCooldown || {})
+      };
+
+      const parsedUntil = nextTradeCooldown.until ? new Date(nextTradeCooldown.until) : null;
+
+      return {
+        until: parsedUntil && !Number.isNaN(parsedUntil.getTime()) ? parsedUntil.toISOString() : "",
+        reason: ["partial", "missed"].includes(nextTradeCooldown.reason) ? nextTradeCooldown.reason : ""
+      };
+    },
+
     normalizeRuleStatus(value) {
       return ["followed", "partial", "missed"].includes(value) ? value : "";
     },
@@ -977,6 +1047,20 @@ export default {
         localStorage.setItem("nasdaq_emotion_checklist", JSON.stringify(this.emotionChecklist));
       } catch (error) {
         console.error("Error al guardar checklist emocional:", error);
+      }
+
+      this.scheduleCloudSave();
+    },
+
+    persistTradeCooldown() {
+      if (!this.isHydratingFromCloud && !this.isLoadingLocalData) {
+        this.justSavedLocallyAt = Date.now();
+      }
+
+      try {
+        localStorage.setItem("nasdaq_trade_cooldown", JSON.stringify(this.tradeCooldown));
+      } catch (error) {
+        console.error("Error al guardar el bloqueo temporal de trades:", error);
       }
 
       this.scheduleCloudSave();
@@ -1222,6 +1306,53 @@ export default {
         "rule-badge-partial": status === "partial",
         "rule-badge-missed": status === "missed"
       };
+    },
+
+    applyTradeCooldown(ruleStatus) {
+      let cooldownMinutes = 0;
+
+      if (ruleStatus === "partial") {
+        cooldownMinutes = 10;
+      } else if (ruleStatus === "missed") {
+        cooldownMinutes = 20;
+      }
+
+      if (!cooldownMinutes) {
+        this.tradeCooldown = this.getDefaultTradeCooldown();
+        this.persistTradeCooldown();
+        return;
+      }
+
+      const cooldownUntil = new Date(Date.now() + cooldownMinutes * 60 * 1000).toISOString();
+      this.tradeCooldown = {
+        until: cooldownUntil,
+        reason: ruleStatus
+      };
+      this.lastAnnouncedTradeCooldownUntil = cooldownUntil;
+      this.persistTradeCooldown();
+    },
+
+    clearExpiredTradeCooldown() {
+      if (!this.tradeCooldown.until) return;
+
+      const cooldownUntil = new Date(this.tradeCooldown.until);
+      if (Number.isNaN(cooldownUntil.getTime()) || cooldownUntil.getTime() > Date.now()) return;
+
+      const expiredReason = this.tradeCooldown.reason;
+      const expiredUntil = this.tradeCooldown.until;
+      this.tradeCooldown = this.getDefaultTradeCooldown();
+      this.persistTradeCooldown();
+
+      if (expiredUntil && this.lastAnnouncedTradeCooldownUntil === expiredUntil) {
+        this.lastAnnouncedTradeCooldownUntil = "";
+        if (expiredReason === "partial") {
+          this.speakText("Terminó el bloqueo de diez minutos. Ya puedes volver a operar.");
+        } else if (expiredReason === "missed") {
+          this.speakText("Terminó el bloqueo de veinte minutos. Ya puedes volver a operar.");
+        } else {
+          this.speakText("Terminó el bloqueo temporal. Ya puedes volver a operar.");
+        }
+      }
     },
 
     getPomodoroModeSeconds(mode, pomodoroState = this.pomodoro) {
@@ -1549,6 +1680,7 @@ export default {
       });
 
       this.todayDate = now.toLocaleDateString("es-PE");
+  this.clearExpiredTradeCooldown();
       this.tickPomodoro();
 
       const seconds = now.getSeconds();
@@ -1617,6 +1749,11 @@ export default {
         const savedEmotionChecklist = localStorage.getItem("nasdaq_emotion_checklist");
         if (savedEmotionChecklist) {
           this.emotionChecklist = this.normalizeEmotionChecklist(JSON.parse(savedEmotionChecklist));
+        }
+
+        const savedTradeCooldown = localStorage.getItem("nasdaq_trade_cooldown");
+        if (savedTradeCooldown) {
+          this.tradeCooldown = this.normalizeTradeCooldown(JSON.parse(savedTradeCooldown));
         }
 
         const savedTaskVoiceMuted = localStorage.getItem("nasdaq_task_voice_muted");
@@ -1740,6 +1877,7 @@ export default {
             trades: this.trades,
             pomodoro: this.pomodoro,
             emotionChecklist: this.emotionChecklist,
+            tradeCooldown: this.tradeCooldown,
             taskVoiceMuted: this.taskVoiceMuted,
             newsReminders: this.newsReminders,
             newsAlertsEnabled: this.newsAlertsEnabled,
@@ -1887,6 +2025,7 @@ export default {
       }
 
       this.justSavedLocallyAt = Date.now();
+      this.applyTradeCooldown(tradePayload.ruleStatus);
       this.resetTradeForm();
     },
 
