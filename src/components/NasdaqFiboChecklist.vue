@@ -163,10 +163,22 @@
           </draggable>
 
           <div class="task-actions">
+            <button
+              class="secondary-btn"
+              :class="{ 'secondary-btn-muted': taskVoiceMuted }"
+              @click="toggleTaskVoiceMuted"
+            >
+              {{ taskVoiceMuted ? '🔇 Tareas en mudo' : '🔊 Voz de tareas activa' }}
+            </button>
             <button class="secondary-btn" @click="clearCompleted">
               Borrar completadas
             </button>
-            <button class="secondary-btn" @click="announceCompletedTasks" title="Prueba voz">
+            <button
+              class="secondary-btn"
+              :disabled="taskVoiceMuted"
+              @click="announceCompletedTasks"
+              title="Prueba voz"
+            >
               🔊 Probar voz
             </button>
           </div>

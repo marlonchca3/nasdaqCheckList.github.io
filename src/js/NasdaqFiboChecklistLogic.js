@@ -23,6 +23,7 @@ export default {
       lastSpokenMinute: null,
       showCelebration: false,
       celebrationPlayed: false,
+      taskVoiceMuted: false,
 
       newTask: "",
       rValue: 50,
@@ -256,6 +257,10 @@ export default {
       }
 
       return "Este filtro emocional es obligatorio para abrir la operativa del día.";
+    },
+
+    taskVoiceStatusLabel() {
+      return this.taskVoiceMuted ? "Tareas en mudo" : "Voz de tareas activa";
     },
 
     todaysTrades() {
@@ -671,6 +676,7 @@ export default {
         this.pomodoro = this.normalizePomodoroState(data.pomodoro);
         this.pomodoroGoalCelebrated = this.pomodoro.totalFocusedSeconds >= this.pomodoroTargetSeconds;
         this.emotionChecklist = this.normalizeEmotionChecklist(data.emotionChecklist);
+        this.taskVoiceMuted = Boolean(data.taskVoiceMuted);
 
         this.isHydratingFromCloud = false;
         this.syncState = "synced";
@@ -745,6 +751,29 @@ export default {
       }
 
       this.scheduleCloudSave();
+    },
+
+    persistTaskVoiceMuted() {
+      if (!this.isHydratingFromCloud && !this.isLoadingLocalData) {
+        this.justSavedLocallyAt = Date.now();
+      }
+
+      try {
+        localStorage.setItem("nasdaq_task_voice_muted", JSON.stringify(this.taskVoiceMuted));
+      } catch (error) {
+        console.error("Error al guardar el mute de tareas:", error);
+      }
+
+      if (this.taskVoiceMuted) {
+        window.speechSynthesis.cancel();
+      }
+
+      this.scheduleCloudSave();
+    },
+
+    toggleTaskVoiceMuted() {
+      this.taskVoiceMuted = !this.taskVoiceMuted;
+      this.persistTaskVoiceMuted();
     },
 
     setEmotionState(state) {
@@ -1145,6 +1174,11 @@ export default {
         if (savedEmotionChecklist) {
           this.emotionChecklist = this.normalizeEmotionChecklist(JSON.parse(savedEmotionChecklist));
         }
+
+        const savedTaskVoiceMuted = localStorage.getItem("nasdaq_task_voice_muted");
+        if (savedTaskVoiceMuted) {
+          this.taskVoiceMuted = Boolean(JSON.parse(savedTaskVoiceMuted));
+        }
       } catch (error) {
         console.error("Error al leer datos locales:", error);
       } finally {
@@ -1250,6 +1284,7 @@ export default {
             trades: this.trades,
             pomodoro: this.pomodoro,
             emotionChecklist: this.emotionChecklist,
+            taskVoiceMuted: this.taskVoiceMuted,
             rValue: this.safeRValue,
             goalUSD: this.safeGoalUSD,
             updatedAt: serverTimestamp(),
@@ -1478,7 +1513,11 @@ export default {
       }
     },
 
-    announceCompletedTasks() {
+    announceCompletedTasks(force = false) {
+      if (this.taskVoiceMuted && !force) {
+        return;
+      }
+
       const completedTasks = this.tasks.filter(task => task.done);
 
       if (completedTasks.length === 0) {

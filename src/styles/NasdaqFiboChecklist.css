@@ -524,6 +524,12 @@ h2 {
   border: 1px solid rgba(148, 163, 184, 0.14);
 }
 
+.secondary-btn-muted {
+  border-color: rgba(248, 113, 113, 0.28);
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.2);
+}
+
 .primary-btn:hover,
 .secondary-btn:hover,
 .tiny-btn:hover,
@@ -1215,6 +1221,12 @@ h2 {
   background: rgba(51, 65, 85, 0.1);
   color: #475569;
   border-color: rgba(51, 65, 85, 0.15);
+}
+
+.light-mode .secondary-btn-muted {
+  background: rgba(254, 226, 226, 0.9);
+  color: #b91c1c;
+  border-color: rgba(220, 38, 38, 0.18);
 }
 
 .light-mode .primary-btn {
