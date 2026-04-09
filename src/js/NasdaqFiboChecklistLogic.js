@@ -108,6 +108,14 @@ export default {
       return this.tasks.length > 0 && this.tasks.every(task => task.done);
     },
 
+    maxDailyTasks() {
+      return 10;
+    },
+
+    taskLimitReached() {
+      return this.tasks.length >= this.maxDailyTasks;
+    },
+
     progressPercent() {
       if (!this.tasks.length) return 0;
       return Math.round((this.completedCount / this.tasks.length) * 100);
@@ -721,11 +729,7 @@ export default {
             this.justSavedLocallyAt = Date.now();
           }
 
-          const normalizedTasks = newTasks.map(task => ({
-            id: task.id,
-            text: task.text,
-            done: Boolean(task.done)
-          }));
+          const normalizedTasks = this.normalizeTasks(newTasks);
 
           localStorage.setItem(
             "nasdaq_tasks_professional",
@@ -863,7 +867,7 @@ export default {
         const data = snapshot.data();
         this.isHydratingFromCloud = true;
 
-        this.tasks = Array.isArray(data.tasks) ? data.tasks : [];
+        this.tasks = this.normalizeTasks(data.tasks);
         this.trades = this.normalizeTrades(data.trades);
         this.rValue = Number(data.rValue) > 0 ? Number(data.rValue) : 50;
         this.goalUSD = Number(data.goalUSD) > 0 ? Number(data.goalUSD) : 3000;
@@ -980,6 +984,26 @@ export default {
     normalizePositiveNumber(value, fallback) {
       const parsedValue = Number(value);
       return Number.isFinite(parsedValue) && parsedValue > 0 ? parsedValue : fallback;
+    },
+
+    normalizeTask(rawTask, index = 0) {
+      const text = String(rawTask?.text || "").trim();
+      if (!text) return null;
+
+      return {
+        id: rawTask?.id || Date.now() + Math.random() + index,
+        text,
+        done: Boolean(rawTask?.done)
+      };
+    },
+
+    normalizeTasks(rawTasks) {
+      if (!Array.isArray(rawTasks)) return [];
+
+      return rawTasks
+        .map((task, index) => this.normalizeTask(task, index))
+        .filter(Boolean)
+        .slice(0, this.maxDailyTasks);
     },
 
     normalizeEmotionChecklist(rawEmotionChecklist) {
@@ -1719,7 +1743,7 @@ export default {
         const savedTasks = localStorage.getItem("nasdaq_tasks_professional");
         if (savedTasks) {
           const parsed = JSON.parse(savedTasks);
-          this.tasks = Array.isArray(parsed) ? parsed : [];
+          this.tasks = this.normalizeTasks(parsed);
         }
 
         const savedTrades = localStorage.getItem("nasdaq_trades_curve");
@@ -1873,7 +1897,7 @@ export default {
         await setDoc(
           boardRef,
           {
-            tasks: this.tasks,
+            tasks: this.normalizeTasks(this.tasks),
             trades: this.trades,
             pomodoro: this.pomodoro,
             emotionChecklist: this.emotionChecklist,
@@ -1909,6 +1933,11 @@ export default {
 
       if (!text) {
         alert("Escribe una tarea primero.");
+        return;
+      }
+
+      if (this.taskLimitReached) {
+        alert(`Solo puedes tener ${this.maxDailyTasks} tareas por día.`);
         return;
       }
 

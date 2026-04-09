@@ -95,6 +95,7 @@
             <div class="header-pills">
               <span class="pill">Completadas {{ completedCount }}</span>
               <span class="pill">Pendientes {{ tasks.length - completedCount }}</span>
+              <span class="pill">Maximo {{ maxDailyTasks }}</span>
             </div>
           </div>
 
@@ -103,13 +104,20 @@
     v-model="newTask"
     type="text"
     placeholder="Ejemplo: Esperar confirmación en zona"
+    :disabled="taskLimitReached"
     @keyup.enter="addTask"
   />
 
-  <button type="button" class="primary-btn" @click="addTask">
+  <button type="button" class="primary-btn" :disabled="taskLimitReached" @click="addTask">
     Agregar
   </button>
 </div>
+
+          <p class="task-limit-note" :class="{ 'task-limit-note-warning': taskLimitReached }">
+            {{ taskLimitReached
+              ? `Llegaste al máximo de ${maxDailyTasks} tareas para hoy.`
+              : `Puedes crear hasta ${maxDailyTasks} tareas para el día.` }}
+          </p>
 
           <div class="progress-wrap">
             <div class="progress-labels">
