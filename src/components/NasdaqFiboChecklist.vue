@@ -757,32 +757,144 @@
         </div>
 
         <div class="chart-wrap">
-          <svg viewBox="0 0 1000 260" class="curve-svg" preserveAspectRatio="none">
+          <svg
+            v-if="curveChartBounds"
+            :key="curveRenderKey"
+            viewBox="0 0 1000 320"
+            class="curve-svg"
+            preserveAspectRatio="none"
+          >
+            <defs>
+              <linearGradient id="curveFillGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.38" />
+                <stop offset="55%" stop-color="#0ea5e9" stop-opacity="0.18" />
+                <stop offset="100%" stop-color="#020617" stop-opacity="0.02" />
+              </linearGradient>
+
+              <linearGradient id="curveStrokeGradient" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#22d3ee" />
+                <stop offset="52%" stop-color="#38bdf8" />
+                <stop offset="100%" stop-color="#60a5fa" />
+              </linearGradient>
+
+              <filter id="curveGlow" x="-20%" y="-30%" width="140%" height="170%">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="7" result="curveBlur" />
+                <feColorMatrix
+                  in="curveBlur"
+                  type="matrix"
+                  values="1 0 0 0 0  0 1 0 0 0.36  0 0 1 0 0.52  0 0 0 1 0"
+                  result="curveTint"
+                />
+                <feMerge>
+                  <feMergeNode in="curveTint" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+
+            <g class="curve-grid-layer">
+              <line
+                v-for="gridLine in curveGridLines"
+                :key="gridLine.key"
+                :x1="curveChartBounds.paddingLeft"
+                :y1="gridLine.y"
+                :x2="curveChartBounds.width - curveChartBounds.paddingRight"
+                :y2="gridLine.y"
+                class="curve-grid-line"
+              />
+
+              <text
+                v-for="gridLine in curveGridLines"
+                :key="`${gridLine.key}-label`"
+                :x="curveChartBounds.paddingLeft"
+                :y="gridLine.y - 8"
+                class="curve-grid-label"
+              >
+                {{ gridLine.label }}
+              </text>
+            </g>
+
             <line
               v-if="zeroLineY !== null"
-              x1="0"
+              :x1="curveChartBounds.paddingLeft"
               :y1="zeroLineY"
-              x2="1000"
+              :x2="curveChartBounds.width - curveChartBounds.paddingRight"
               :y2="zeroLineY"
               class="zero-line"
             />
 
-            <polyline
-              v-if="curvePolyline"
-              :points="curvePolyline"
-              fill="none"
-              class="curve-line"
+            <path
+              v-if="curveAreaPath"
+              :d="curveAreaPath"
+              class="curve-area"
             />
 
-            <circle
+            <path
+              v-if="curvePath"
+              :d="curvePath"
+              class="curve-line curve-line-glow"
+              pathLength="100"
+            />
+
+            <path
+              v-if="curvePath"
+              :d="curvePath"
+              class="curve-line curve-line-main"
+              pathLength="100"
+            />
+
+            <g
               v-for="(point, index) in curvePoints"
               :key="index"
-              :cx="point.x"
-              :cy="point.y"
-              r="4"
-              class="curve-point"
-            />
+              class="curve-point-node"
+              :class="[
+                point.resultR >= 0 ? 'curve-point-positive' : 'curve-point-negative',
+                { 'is-active': activeCurvePoint && activeCurvePoint.index === index }
+              ]"
+              @mouseenter="hoveredCurveIndex = index"
+              @mouseleave="hoveredCurveIndex = null"
+            >
+              <circle
+                :cx="point.x"
+                :cy="point.y"
+                r="14"
+                class="curve-point-hit"
+              />
+              <circle
+                :cx="point.x"
+                :cy="point.y"
+                r="7"
+                class="curve-point-ring"
+              />
+              <circle
+                :cx="point.x"
+                :cy="point.y"
+                r="4.5"
+                class="curve-point-core"
+              />
+            </g>
+
+            <g
+              v-if="activeCurvePoint"
+              class="curve-tooltip"
+              :transform="`translate(${activeCurvePoint.tooltipX}, ${activeCurvePoint.tooltipY})`"
+            >
+              <rect width="170" height="62" rx="16" class="curve-tooltip-box" />
+              <text x="14" y="24" class="curve-tooltip-title">
+                {{ activeCurvePoint.title }}
+              </text>
+              <text x="14" y="42" class="curve-tooltip-value">
+                {{ activeCurvePoint.cumulativeLabel }}
+              </text>
+              <text x="14" y="56" class="curve-tooltip-detail">
+                {{ activeCurvePoint.detailLabel }}
+              </text>
+            </g>
           </svg>
+
+          <div v-else class="curve-empty-state">
+            Registra trades para ver tu curva de R.
+          </div>
         </div>
       </section>
 

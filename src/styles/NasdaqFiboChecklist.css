@@ -700,6 +700,15 @@ h2 {
   margin-bottom: 14px;
 }
 
+.chart-panel {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top left, rgba(34, 211, 238, 0.12), transparent 34%),
+    radial-gradient(circle at 88% 12%, rgba(59, 130, 246, 0.1), transparent 28%),
+    rgba(15, 23, 42, 0.9);
+}
+
 .calendar-panel {
   margin-bottom: 14px;
 }
@@ -1239,31 +1248,160 @@ h2 {
 
 .chart-wrap {
   width: 100%;
-  height: 280px;
+  height: 320px;
+  margin-top: 10px;
 }
 
 .curve-svg {
   width: 100%;
   height: 100%;
-  border-radius: 16px;
-  background: rgba(15, 23, 42, 0.7);
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, rgba(8, 15, 28, 0.96) 0%, rgba(2, 6, 23, 0.88) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 44px rgba(2, 6, 23, 0.42);
 }
 
 .curve-line {
-  stroke: #38bdf8;
-  stroke-width: 3;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-.curve-point {
-  fill: #f8fafc;
-  stroke: #38bdf8;
+.curve-line-glow {
+  stroke: rgba(56, 189, 248, 0.45);
+  stroke-width: 12;
+  filter: url(#curveGlow);
+  opacity: 0.95;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: draw-curve 1.15s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.curve-line-main {
+  stroke: url(#curveStrokeGradient);
+  stroke-width: 4.5;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: draw-curve 1.15s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.curve-area {
+  fill: url(#curveFillGradient);
+  opacity: 0;
+  animation: reveal-area 0.8s ease-out 0.18s forwards;
+}
+
+.curve-grid-line {
+  stroke: rgba(148, 163, 184, 0.1);
+  stroke-width: 1;
+  stroke-dasharray: 4 8;
+}
+
+.curve-grid-label {
+  fill: rgba(148, 163, 184, 0.6);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+
+.curve-point-node {
+  transition: transform 0.18s ease;
+}
+
+.curve-point-hit {
+  fill: transparent;
+  cursor: pointer;
+}
+
+.curve-point-ring,
+.curve-point-core {
+  transition:
+    r 0.18s ease,
+    fill 0.18s ease,
+    stroke 0.18s ease,
+    opacity 0.18s ease;
+}
+
+.curve-point-ring {
+  fill: rgba(15, 23, 42, 0.82);
+  stroke: rgba(125, 211, 252, 0.7);
   stroke-width: 2;
 }
 
+.curve-point-core {
+  fill: #e0f2fe;
+  stroke: rgba(34, 211, 238, 0.35);
+  stroke-width: 5;
+}
+
+.curve-point-positive .curve-point-ring {
+  stroke: rgba(34, 211, 238, 0.85);
+}
+
+.curve-point-negative .curve-point-ring {
+  stroke: rgba(248, 113, 113, 0.8);
+}
+
+.curve-point-negative .curve-point-core {
+  fill: #fecaca;
+  stroke: rgba(248, 113, 113, 0.32);
+}
+
+.curve-point-node.is-active .curve-point-ring {
+  r: 8.5;
+  opacity: 1;
+}
+
+.curve-point-node.is-active .curve-point-core {
+  r: 5.5;
+  opacity: 1;
+}
+
+.curve-tooltip {
+  pointer-events: none;
+  animation: tooltip-float 0.22s ease-out;
+}
+
+.curve-tooltip-box {
+  fill: rgba(2, 6, 23, 0.92);
+  stroke: rgba(148, 163, 184, 0.18);
+  stroke-width: 1;
+}
+
+.curve-tooltip-title {
+  fill: #93c5fd;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.curve-tooltip-value {
+  fill: #f8fafc;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.curve-tooltip-detail {
+  fill: #94a3b8;
+  font-size: 11px;
+}
+
 .zero-line {
-  stroke: rgba(148, 163, 184, 0.25);
+  stroke: rgba(148, 163, 184, 0.4);
   stroke-width: 1.5;
-  stroke-dasharray: 5 5;
+  stroke-dasharray: 5 7;
+}
+
+.curve-empty-state {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  border-radius: 20px;
+  border: 1px dashed rgba(148, 163, 184, 0.16);
+  color: #8fa6c3;
+  background: rgba(2, 6, 23, 0.58);
 }
 
 .positive {
@@ -1299,6 +1437,34 @@ h2 {
   100% {
     transform: scale(1);
     opacity: 1;
+  }
+}
+
+@keyframes draw-curve {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes reveal-area {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes tooltip-float {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -1476,11 +1642,38 @@ h2 {
 }
 
 .light-mode .curve-svg {
-  background: rgba(241, 245, 249, 0.8);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(241, 245, 249, 0.9) 100%);
 }
 
 .light-mode .zero-line {
   stroke: rgba(51, 65, 85, 0.2);
+}
+
+.light-mode .curve-grid-line {
+  stroke: rgba(51, 65, 85, 0.08);
+}
+
+.light-mode .curve-grid-label {
+  fill: rgba(51, 65, 85, 0.58);
+}
+
+.light-mode .curve-tooltip-box {
+  fill: rgba(255, 255, 255, 0.94);
+  stroke: rgba(51, 65, 85, 0.12);
+}
+
+.light-mode .curve-tooltip-value {
+  fill: #0f172a;
+}
+
+.light-mode .curve-tooltip-detail {
+  fill: #64748b;
+}
+
+.light-mode .curve-empty-state {
+  background: rgba(255, 255, 255, 0.88);
+  color: #64748b;
+  border-color: rgba(51, 65, 85, 0.12);
 }
 
 .light-mode .hero-text {

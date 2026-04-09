@@ -27,6 +27,7 @@ export default {
       newsAlertsEnabled: true,
       notificationPermission: "default",
       lastNewsAlertCheckKey: "",
+      hoveredCurveIndex: null,
       speechSequenceToken: 0,
       speechRepeatTimer: null,
 
@@ -500,6 +501,10 @@ export default {
       return [...trades].reverse();
     },
 
+    curveTrades() {
+      return [...this.filteredTrades].reverse();
+    },
+
     calendarMonthDate() {
       return this.getCalendarMonthDate();
     },
@@ -629,64 +634,147 @@ export default {
     curveData() {
       let cumulative = 0;
 
-      return this.filteredTrades.map((trade, index) => {
-        cumulative += this.getSafeR(trade.resultR);
+      return this.curveTrades.map((trade, index) => {
+        const resultR = this.getSafeR(trade.resultR);
+        cumulative += resultR;
+
         return {
           index,
-          cumulative
+          trade,
+          resultR,
+          cumulative,
+          title: trade.date || `Trade ${index + 1}`,
+          detail: trade.session || "Sin sesión"
         };
       });
     },
 
-    curvePoints() {
-      if (this.curveData.length === 0) return [];
+    curveChartBounds() {
+      if (this.curveData.length === 0) return null;
 
       const width = 1000;
-      const height = 260;
-      const paddingX = 40;
-      const paddingY = 24;
+      const height = 320;
+      const paddingTop = 20;
+      const paddingRight = 20;
+      const paddingBottom = 26;
+      const paddingLeft = 20;
+      const plotWidth = width - paddingLeft - paddingRight;
+      const plotHeight = height - paddingTop - paddingBottom;
 
-      const values = this.curveData.map(p => p.cumulative);
-      values.push(0, this.goalR);
+      const values = this.curveData.map(point => point.cumulative);
+      values.push(0);
 
-      const minVal = Math.min(...values);
-      const maxVal = Math.max(...values);
+      const rawMin = Math.min(...values);
+      const rawMax = Math.max(...values);
+      const rawRange = rawMax - rawMin;
+      const padding = rawRange === 0 ? 1.25 : Math.max(rawRange * 0.12, 0.6);
+      const minVal = Math.min(rawMin - padding, 0);
+      const maxVal = Math.max(rawMax + padding, 0);
+      const range = maxVal - minVal || 1;
+      const zeroLineY = this.mapCurveValueToY(0, {
+        height,
+        paddingBottom,
+        minVal,
+        range,
+        plotHeight
+      });
 
-      let range = maxVal - minVal;
-      if (range === 0) range = 1;
+      return {
+        width,
+        height,
+        paddingTop,
+        paddingRight,
+        paddingBottom,
+        paddingLeft,
+        plotWidth,
+        plotHeight,
+        minVal,
+        maxVal,
+        range,
+        zeroLineY
+      };
+    },
+
+    curvePoints() {
+      if (!this.curveChartBounds) return [];
 
       return this.curveData.map((point, idx) => {
         const x = this.curveData.length === 1
-          ? width / 2
-          : paddingX + (idx * (width - paddingX * 2)) / (this.curveData.length - 1);
+          ? this.curveChartBounds.width / 2
+          : this.curveChartBounds.paddingLeft
+            + (idx * this.curveChartBounds.plotWidth) / (this.curveData.length - 1);
 
-        const normalized = (point.cumulative - minVal) / range;
-        const y = height - paddingY - normalized * (height - paddingY * 2);
+        const y = this.mapCurveValueToY(point.cumulative, this.curveChartBounds);
 
-        return { x, y };
+        return {
+          ...point,
+          x,
+          y
+        };
       });
     },
 
-    curvePolyline() {
-      return this.curvePoints.map(point => `${point.x},${point.y}`).join(" ");
+    curvePath() {
+      return this.buildSmoothCurvePath(this.curvePoints);
+    },
+
+    curveAreaPath() {
+      if (!this.curvePath || !this.curvePoints.length || !this.curveChartBounds) return "";
+
+      const firstPoint = this.curvePoints[0];
+      const lastPoint = this.curvePoints[this.curvePoints.length - 1];
+      return `${this.curvePath} L ${lastPoint.x} ${this.curveChartBounds.zeroLineY} L ${firstPoint.x} ${this.curveChartBounds.zeroLineY} Z`;
+    },
+
+    curveGridLines() {
+      if (!this.curveChartBounds) return [];
+
+      const tickCount = 4;
+      return Array.from({ length: tickCount + 1 }, (_, index) => {
+        const ratio = index / tickCount;
+        const value = this.curveChartBounds.maxVal - this.curveChartBounds.range * ratio;
+        return {
+          key: `curve-grid-${index}`,
+          value,
+          y: this.mapCurveValueToY(value, this.curveChartBounds),
+          label: this.formatCurveValue(value)
+        };
+      });
+    },
+
+    activeCurvePoint() {
+      if (!this.curvePoints.length || !this.curveChartBounds) return null;
+
+      const activeIndex = this.hoveredCurveIndex ?? (this.curvePoints.length - 1);
+      const point = this.curvePoints[activeIndex];
+      if (!point) return null;
+
+      const tooltipWidth = 170;
+      const tooltipHeight = 62;
+      const tooltipX = Math.min(
+        Math.max(point.x + 14, 12),
+        this.curveChartBounds.width - tooltipWidth - 12
+      );
+      const tooltipY = point.y < 88
+        ? Math.min(point.y + 18, this.curveChartBounds.height - tooltipHeight - 10)
+        : Math.max(point.y - tooltipHeight - 12, 10);
+
+      return {
+        ...point,
+        tooltipX,
+        tooltipY,
+        title: point.title,
+        cumulativeLabel: `${this.formatCurveValue(point.cumulative)} acumulado`,
+        detailLabel: `${point.resultR >= 0 ? "+" : ""}${this.formatCurveValue(point.resultR)} · ${point.detail}`
+      };
+    },
+
+    curveRenderKey() {
+      return `${this.curveData.length}-${this.totalR}-${this.sessionFilter}`;
     },
 
     zeroLineY() {
-      if (this.curveData.length === 0) return null;
-
-      const height = 260;
-      const paddingY = 24;
-      const values = this.curveData.map(p => p.cumulative);
-      values.push(0, this.goalR);
-
-      const minVal = Math.min(...values);
-      const maxVal = Math.max(...values);
-
-      let range = maxVal - minVal;
-      if (range === 0) range = 1;
-
-      const normalized = (0 - minVal) / range;
-      return height - paddingY - normalized * (height - paddingY * 2);
+      return this.curveChartBounds?.zeroLineY ?? null;
     },
 
     syncStatusLabel() {
@@ -1614,6 +1702,10 @@ export default {
       return `${formatter.format(value)}${suffix}`;
     },
 
+    formatCurveValue(value) {
+      return `${this.formatCalendarValue(value, "R")}`;
+    },
+
     getCalendarWinRate(summary) {
       if (!summary || !summary.tradeCount) return 0;
       return Math.round((summary.wins / summary.tradeCount) * 100);
@@ -1811,6 +1903,39 @@ export default {
     getSafeR(value) {
       const n = Number(value);
       return Number.isFinite(n) ? n : 0;
+    },
+
+    mapCurveValueToY(value, bounds) {
+      return bounds.height
+        - bounds.paddingBottom
+        - ((value - bounds.minVal) / bounds.range) * bounds.plotHeight;
+    },
+
+    buildSmoothCurvePath(points) {
+      if (!points.length) return "";
+      if (points.length === 1) {
+        return `M ${points[0].x} ${points[0].y}`;
+      }
+
+      const path = [`M ${points[0].x} ${points[0].y}`];
+
+      for (let index = 0; index < points.length - 1; index += 1) {
+        const current = points[index];
+        const next = points[index + 1];
+        const previous = points[index - 1] || current;
+        const afterNext = points[index + 2] || next;
+
+        const controlPoint1X = current.x + (next.x - previous.x) / 6;
+        const controlPoint1Y = current.y + (next.y - previous.y) / 6;
+        const controlPoint2X = next.x - (afterNext.x - current.x) / 6;
+        const controlPoint2Y = next.y - (afterNext.y - current.y) / 6;
+
+        path.push(
+          `C ${controlPoint1X} ${controlPoint1Y}, ${controlPoint2X} ${controlPoint2Y}, ${next.x} ${next.y}`
+        );
+      }
+
+      return path.join(" ");
     },
 
 
