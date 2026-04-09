@@ -33,6 +33,14 @@ jobs:
         run: npm ci
 
       - name: Build app
+        env:
+          VITE_FIREBASE_API_KEY: AIzaSyDOzaWazKdlYhP75PY8X0Y3-byhFT8iVYc
+          VITE_FIREBASE_AUTH_DOMAIN: blogeekplatzi-d97a4.firebaseapp.com
+          VITE_FIREBASE_PROJECT_ID: blogeekplatzi-d97a4
+          VITE_FIREBASE_STORAGE_BUCKET: blogeekplatzi-d97a4.firebasestorage.app
+          VITE_FIREBASE_MESSAGING_SENDER_ID: "168008095795"
+          VITE_FIREBASE_APP_ID: 1:168008095795:web:00172cbe1521ffc4732b46
+          VITE_FIREBASE_MEASUREMENT_ID: G-G4RL05137K
         run: npm run build
 
       - name: Setup Pages

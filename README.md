@@ -41,6 +41,8 @@ VITE_FIREBASE_APP_ID=
 VITE_FIREBASE_MEASUREMENT_ID=
 ```
 
+En GitHub Pages, el workflow de Actions también necesita esas variables durante `npm run build`. En este repositorio quedaron definidas dentro de [.github/workflows/deploy-pages.yml](.github/workflows/deploy-pages.yml) para que la versión publicada no salga en blanco.
+
 ## Alertas Nasdaq manuales
 
 La app permite crear recordatorios manuales para eventos importantes como CPI, FOMC, Powell o earnings y avisarte 15 minutos antes.
