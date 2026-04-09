@@ -91,7 +91,6 @@ export default {
         date: new Date().toISOString().slice(0, 10),
         session: "",
         direction: "",
-        setup: "",
         ruleStatus: "",
         resultR: 1,
         note: ""
@@ -484,8 +483,11 @@ export default {
     },
 
     filteredTrades() {
-      if (this.sessionFilter === "All") return this.trades;
-      return this.trades.filter(trade => trade.session === this.sessionFilter);
+      const trades = this.sessionFilter === "All"
+        ? this.trades
+        : this.trades.filter(trade => trade.session === this.sessionFilter);
+
+      return [...trades].reverse();
     },
 
     calendarMonthDate() {
@@ -921,7 +923,6 @@ export default {
         date: new Date().toISOString().slice(0, 10),
         session: "",
         direction: "",
-        setup: "",
         ruleStatus: "",
         resultR: 1,
         note: ""
@@ -1023,7 +1024,6 @@ export default {
           : new Date().toISOString().slice(0, 10),
         session: String(rawTrade?.session || ""),
         direction: String(rawTrade?.direction || ""),
-        setup: String(rawTrade?.setup || ""),
         ruleStatus: this.normalizeRuleStatus(rawTrade?.ruleStatus),
         resultR,
         resultUSD: Number.isFinite(Number(rawTrade?.resultUSD))
@@ -1980,8 +1980,15 @@ export default {
       this.scheduleCloudSave();
     },
 
-    resetTradeForm() {
-      this.tradeForm = this.getDefaultTradeForm();
+    resetTradeForm(options = {}) {
+      const { preserveSelection = true } = options;
+      const previousTradeForm = this.tradeForm;
+
+      this.tradeForm = {
+        ...this.getDefaultTradeForm(),
+        session: preserveSelection ? previousTradeForm.session : "",
+        direction: preserveSelection ? previousTradeForm.direction : ""
+      };
       this.isEditing = false;
       this.editingTradeId = null;
     },
@@ -1999,7 +2006,6 @@ export default {
         date: this.tradeForm.date,
         session: this.tradeForm.session,
         direction: this.tradeForm.direction,
-        setup: this.tradeForm.setup.trim(),
         ruleStatus: this.normalizeRuleStatus(this.tradeForm.ruleStatus),
         resultR,
         resultUSD: resultR * this.safeRValue,
@@ -2034,7 +2040,6 @@ export default {
         date: trade.date,
         session: trade.session,
         direction: trade.direction,
-        setup: trade.setup,
         ruleStatus: this.normalizeRuleStatus(trade.ruleStatus),
         resultR: trade.resultR,
         note: trade.note

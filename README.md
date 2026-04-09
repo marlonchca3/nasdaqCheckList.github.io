@@ -25,6 +25,22 @@ See [Vite Configuration Reference](https://vite.dev/config/).
 npm install
 ```
 
+## Variables de entorno
+
+La configuración de Firebase se lee desde `.env` con variables `VITE_*` de Vite.
+
+Usa `.env.example` como plantilla y crea tu `.env` local con estos valores:
+
+```env
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=
+VITE_FIREBASE_STORAGE_BUCKET=
+VITE_FIREBASE_MESSAGING_SENDER_ID=
+VITE_FIREBASE_APP_ID=
+VITE_FIREBASE_MEASUREMENT_ID=
+```
+
 ## Alertas Nasdaq manuales
 
 La app permite crear recordatorios manuales para eventos importantes como CPI, FOMC, Powell o earnings y avisarte 15 minutos antes.

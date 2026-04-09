@@ -557,8 +557,6 @@
             <option>Short</option>
           </select>
 
-          <input v-model="tradeForm.setup" type="text" placeholder="Setup" :disabled="isTradeRegistrationBlocked" />
-
           <input
             v-model.number="tradeForm.resultR"
             type="number"
@@ -587,7 +585,6 @@
                 <th>Fecha</th>
                 <th>Sesión</th>
                 <th>Dirección</th>
-                <th>Setup</th>
                 <th>Reglas</th>
                 <th>R</th>
                 <th>USD</th>
@@ -601,7 +598,6 @@
                 <td>{{ trade.date }}</td>
                 <td>{{ trade.session }}</td>
                 <td>{{ trade.direction }}</td>
-                <td>{{ trade.setup }}</td>
                 <td>
                   <span class="rule-badge" :class="getRuleStatusBadgeClass(trade.ruleStatus)">
                     {{ getRuleStatusLabel(trade.ruleStatus) }}
@@ -621,7 +617,7 @@
               </tr>
 
               <tr v-if="filteredTrades.length === 0">
-                <td colspan="9" class="empty-row">Aún no hay trades registrados</td>
+                <td colspan="8" class="empty-row">Aún no hay trades registrados</td>
               </tr>
             </tbody>
           </table>
