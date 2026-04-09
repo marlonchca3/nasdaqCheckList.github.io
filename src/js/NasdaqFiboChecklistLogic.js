@@ -27,6 +27,8 @@ export default {
       newsAlertsEnabled: true,
       notificationPermission: "default",
       lastNewsAlertCheckKey: "",
+      speechSequenceToken: 0,
+      speechRepeatTimer: null,
 
       newTask: "",
       rValue: 50,
@@ -1260,7 +1262,10 @@ export default {
         });
       }
 
-      this.speakText(`Atención. ${reminder.title} comienza en quince minutos.`);
+      this.speakText(`Atención. ${reminder.title} comienza en quince minutos.`, {
+        repeat: 2,
+        pauseBetweenMs: 900
+      });
     },
 
     checkNasdaqNewsAlerts(referenceDate = new Date()) {
@@ -2167,22 +2172,49 @@ export default {
       this.availableVoices = voices;
     },
 
-    speakText(text) {
+    speakText(text, options = {}) {
+      const { repeat = 1, pauseBetweenMs = 0 } = options;
+      const safeRepeat = Math.max(1, Math.round(Number(repeat) || 1));
+      const safePauseBetweenMs = Math.max(0, Math.round(Number(pauseBetweenMs) || 0));
+      const sequenceToken = Date.now() + Math.random();
+
+      this.speechSequenceToken = sequenceToken;
+      if (this.speechRepeatTimer) {
+        clearTimeout(this.speechRepeatTimer);
+        this.speechRepeatTimer = null;
+      }
       window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "es-MX";
-      utterance.rate = 0.9;
-      utterance.pitch = 0.95;
-      utterance.volume = 1.0;
 
       const voices = this.availableVoices.length > 0 ? this.availableVoices : window.speechSynthesis.getVoices();
       const spanishVoice = voices.find(voice => voice.lang.startsWith("es"));
-      
-      if (spanishVoice) {
-        utterance.voice = spanishVoice;
-      }
 
-      window.speechSynthesis.speak(utterance);
+      const speakIteration = iteration => {
+        if (this.speechSequenceToken !== sequenceToken) return;
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = "es-MX";
+        utterance.rate = 0.9;
+        utterance.pitch = 0.95;
+        utterance.volume = 1.0;
+
+        if (spanishVoice) {
+          utterance.voice = spanishVoice;
+        }
+
+        utterance.onend = () => {
+          if (this.speechSequenceToken !== sequenceToken) return;
+          if (iteration >= safeRepeat - 1) return;
+
+          this.speechRepeatTimer = window.setTimeout(() => {
+            this.speechRepeatTimer = null;
+            speakIteration(iteration + 1);
+          }, safePauseBetweenMs);
+        };
+
+        window.speechSynthesis.speak(utterance);
+      };
+
+      speakIteration(0);
     },
 
     toggleTheme() {
