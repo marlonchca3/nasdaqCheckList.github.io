@@ -820,7 +820,7 @@ h2 {
 .calendar-weekdays,
 .calendar-row {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr)) 150px;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) 150px;
   gap: 10px;
 }
 
@@ -2001,7 +2001,7 @@ h2 {
 
   .calendar-weekdays,
   .calendar-row {
-    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .calendar-weekday-summary,
@@ -2081,7 +2081,7 @@ h2 {
 
   .calendar-weekdays,
   .calendar-row {
-    min-width: 920px;
+    min-width: 760px;
   }
 
   .auth-bar {

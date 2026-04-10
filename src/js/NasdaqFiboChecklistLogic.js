@@ -519,7 +519,7 @@ export default {
     },
 
     calendarDayNames() {
-      return ["Dom", "Lun", "Mar", "Mie", "Jue", "Vie", "Sab"];
+      return ["Lun", "Mar", "Mie", "Jue", "Vie"];
     },
 
     calendarMonthTrades() {
@@ -576,59 +576,66 @@ export default {
       const monthDate = this.calendarMonthDate;
       const year = monthDate.getFullYear();
       const monthIndex = monthDate.getMonth();
-      const firstDayOffset = monthDate.getDay();
       const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-      const totalSlots = Math.ceil((firstDayOffset + daysInMonth) / 7) * 7;
       const todayKey = new Date().toISOString().slice(0, 10);
-      const weeks = [];
+      const weeksMap = new Map();
 
-      for (let slot = 0; slot < totalSlots; slot += 7) {
-        const days = [];
+      for (let dayNumber = 1; dayNumber <= daysInMonth; dayNumber += 1) {
+        const currentDate = new Date(year, monthIndex, dayNumber);
+        const dayOfWeek = currentDate.getDay();
 
-        for (let dayOffset = 0; dayOffset < 7; dayOffset += 1) {
-          const index = slot + dayOffset;
-          const dayNumber = index - firstDayOffset + 1;
-          const isCurrentMonth = dayNumber >= 1 && dayNumber <= daysInMonth;
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+          continue;
+        }
 
-          if (!isCurrentMonth) {
-            days.push({
-              key: `empty-${slot}-${dayOffset}`,
+        const businessDayIndex = dayOfWeek - 1;
+        const weekStartDate = new Date(currentDate);
+        weekStartDate.setDate(currentDate.getDate() - businessDayIndex);
+        const weekKey = weekStartDate.toISOString().slice(0, 10);
+
+        if (!weeksMap.has(weekKey)) {
+          weeksMap.set(weekKey, {
+            key: `week-${weekKey}`,
+            label: `Semana ${weeksMap.size + 1}`,
+            weekStartDate,
+            days: Array.from({ length: 5 }, (_, index) => ({
+              key: `empty-${weekKey}-${index}`,
               isCurrentMonth: false,
               dayNumber: null,
               summary: null,
               isToday: false
-            });
-            continue;
-          }
-
-          const dateKey = `${this.currentCalendarMonth}-${String(dayNumber).padStart(2, "0")}`;
-          days.push({
-            key: dateKey,
-            date: dateKey,
-            dayNumber,
-            isCurrentMonth: true,
-            summary: this.calendarDailyStats[dateKey] || null,
-            isToday: dateKey === todayKey
+            }))
           });
         }
 
-        const weekDaysWithTrades = days.filter(day => day.summary);
-        const summary = {
-          totalR: weekDaysWithTrades.reduce((sum, day) => sum + day.summary.totalR, 0),
-          totalUSD: weekDaysWithTrades.reduce((sum, day) => sum + day.summary.totalUSD, 0),
-          activeDays: weekDaysWithTrades.length,
-          tradeCount: weekDaysWithTrades.reduce((sum, day) => sum + day.summary.tradeCount, 0)
+        const dateKey = `${this.currentCalendarMonth}-${String(dayNumber).padStart(2, "0")}`;
+        weeksMap.get(weekKey).days[businessDayIndex] = {
+          key: dateKey,
+          date: dateKey,
+          dayNumber,
+          isCurrentMonth: true,
+          summary: this.calendarDailyStats[dateKey] || null,
+          isToday: dateKey === todayKey
         };
-
-        weeks.push({
-          key: `week-${slot / 7 + 1}`,
-          label: `Semana ${slot / 7 + 1}`,
-          days,
-          summary
-        });
       }
 
-      return weeks;
+      return Array.from(weeksMap.values())
+        .sort((left, right) => left.weekStartDate - right.weekStartDate)
+        .map((week, index) => {
+          const weekDaysWithTrades = week.days.filter(day => day.summary);
+
+          return {
+            key: week.key,
+            label: `Semana ${index + 1}`,
+            days: week.days,
+            summary: {
+              totalR: weekDaysWithTrades.reduce((sum, day) => sum + day.summary.totalR, 0),
+              totalUSD: weekDaysWithTrades.reduce((sum, day) => sum + day.summary.totalUSD, 0),
+              activeDays: weekDaysWithTrades.length,
+              tradeCount: weekDaysWithTrades.reduce((sum, day) => sum + day.summary.tradeCount, 0)
+            }
+          };
+        });
     },
 
     curveData() {
