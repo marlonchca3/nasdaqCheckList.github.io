@@ -427,6 +427,9 @@ export default {
     },
 
     currentWeekRuleStats() {
+      // Depend on the live clock so this computed recalculates when a new day/week starts.
+      this.currentTime;
+
       const today = new Date();
       const day = today.getDay();
       const mondayOffset = day === 0 ? -6 : 1 - day;
@@ -446,8 +449,35 @@ export default {
       const followed = trades.filter(trade => trade.ruleStatus === "followed").length;
       const partial = trades.filter(trade => trade.ruleStatus === "partial").length;
       const missed = trades.filter(trade => trade.ruleStatus === "missed").length;
-      const score = followed + partial * 0.5;
-      const percent = trades.length ? Math.round((score / trades.length) * 100) : 0;
+
+      const dayStatusMap = new Map();
+      trades.forEach(trade => {
+        if (!trade.date) return;
+
+        const currentStatus = dayStatusMap.get(trade.date);
+        if (trade.ruleStatus === "missed") {
+          dayStatusMap.set(trade.date, "missed");
+          return;
+        }
+
+        if (trade.ruleStatus === "partial") {
+          if (currentStatus !== "missed") {
+            dayStatusMap.set(trade.date, "partial");
+          }
+          return;
+        }
+
+        if (trade.ruleStatus === "followed" && !currentStatus) {
+          dayStatusMap.set(trade.date, "followed");
+        }
+      });
+
+      const followedDays = Array.from(dayStatusMap.values()).filter(status => status === "followed").length;
+      const partialDays = Array.from(dayStatusMap.values()).filter(status => status === "partial").length;
+      const missedDays = Array.from(dayStatusMap.values()).filter(status => status === "missed").length;
+
+      const rawPercent = followedDays * 20 + partialDays * 10 - missedDays * 20;
+      const percent = Math.min(Math.max(rawPercent, 0), 100);
 
       return {
         trades,
@@ -455,7 +485,7 @@ export default {
         partial,
         missed,
         percent,
-        label: `${followed} bien · ${partial} parcial · ${missed} fuera`
+        label: `${followedDays} dias +20 · ${partialDays} dias +10 · ${missedDays} dias -20`
       };
     },
 
