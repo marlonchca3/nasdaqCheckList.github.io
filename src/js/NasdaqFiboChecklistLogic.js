@@ -2216,8 +2216,21 @@ export default {
     },
 
     removeTrade(id) {
-      this.trades = this.trades.filter(trade => trade.id !== id);
       this.justSavedLocallyAt = Date.now();
+      this.trades = this.trades.filter(trade => trade.id !== id);
+
+      try {
+        localStorage.setItem("nasdaq_trades_curve", JSON.stringify(this.trades));
+      } catch (error) {
+        console.error("Error guardando cambios de trades:", error);
+      }
+
+      if (this.isEditing && this.editingTradeId === id) {
+        this.resetTradeForm({ preserveSelection: false });
+      }
+
+      // Guardar inmediatamente en la nube, sin esperar
+      this.saveToCloud();
     },
 
     triggerCelebration() {

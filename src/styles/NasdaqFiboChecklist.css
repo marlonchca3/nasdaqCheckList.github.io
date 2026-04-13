@@ -22,6 +22,7 @@
     linear-gradient(90deg, rgba(148, 163, 184, 0.03) 1px, transparent 1px);
   background-size: 32px 32px;
   pointer-events: none;
+  z-index: 0;
 }
 
 .dashboard {
@@ -43,6 +44,7 @@
   background: rgba(15, 23, 42, 0.7);
   border: 1px solid rgba(148, 163, 184, 0.12);
   backdrop-filter: blur(10px);
+  transition: background 0.4s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.4s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.4s cubic-bezier(0.22, 1, 0.36, 1), color 0.4s cubic-bezier(0.22, 1, 0.36, 1), backdrop-filter 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .auth-left {
@@ -151,6 +153,7 @@ button:disabled {
     0 25px 60px rgba(0, 0, 0, 0.4),
     0 8px 25px rgba(30, 58, 138, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: background 0.42s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.42s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.42s cubic-bezier(0.22, 1, 0.36, 1), color 0.42s cubic-bezier(0.22, 1, 0.36, 1), backdrop-filter 0.42s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .hero-card {
@@ -262,6 +265,7 @@ h2 {
   border-radius: 14px;
   background: rgba(15, 23, 42, 0.76);
   border: 1px solid rgba(148, 163, 184, 0.1);
+  transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
 }
 
 .stat-label,
@@ -388,6 +392,7 @@ h2 {
   border-radius: 18px;
   border: 1px solid rgba(148, 163, 184, 0.12);
   background: rgba(15, 23, 42, 0.62);
+  transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
 }
 
 .news-reminder-copy {
@@ -582,6 +587,7 @@ h2 {
   background: rgba(15, 23, 42, 0.7);
   border: 1px solid rgba(148, 163, 184, 0.1);
   margin-bottom: 8px;
+  transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease, background 0.22s ease, opacity 0.22s ease;
 }
 
 .task-card.done {
@@ -632,7 +638,7 @@ h2 {
 .secondary-btn {
   border: none;
   cursor: pointer;
-  transition: 0.2s ease;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease, color 0.18s ease, opacity 0.18s ease;
 }
 
 .drag-handle {
@@ -687,7 +693,7 @@ h2 {
   border-radius: 14px;
   padding: 8px 12px;
   cursor: pointer;
-  transition: 0.2s ease;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
   margin-right: 8px;
 }
 
@@ -795,6 +801,7 @@ h2 {
   border-radius: 16px;
   background: rgba(15, 23, 42, 0.76);
   border: 1px solid rgba(148, 163, 184, 0.1);
+  transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
 }
 
 .calendar-stat-card span {
@@ -854,6 +861,7 @@ h2 {
 .calendar-day-card {
   background: rgba(255, 255, 255, 0.03);
   overflow: hidden;
+  transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
 }
 
 .calendar-day-inner {
@@ -923,6 +931,7 @@ h2 {
   gap: 8px;
   padding: 14px;
   background: rgba(15, 23, 42, 0.78);
+  transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
 }
 
 .calendar-week-summary span {
@@ -1047,7 +1056,7 @@ h2 {
   color: #e2e8f0;
   text-align: left;
   cursor: pointer;
-  transition: 0.2s ease;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
 }
 
 .rule-status-card strong {
@@ -1132,7 +1141,7 @@ h2 {
   padding: 12px 14px;
   font-weight: 700;
   cursor: pointer;
-  transition: 0.2s ease;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
 }
 
 .emotion-toggle-btn:hover {
@@ -1359,6 +1368,71 @@ h2 {
   opacity: 1;
 }
 
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+.drag-handle:focus-visible,
+.danger-icon:focus-visible,
+.tiny-btn:focus-visible,
+.primary-btn:focus-visible,
+.secondary-btn:focus-visible,
+.theme-toggle-btn:focus-visible,
+.emotion-toggle-btn:focus-visible,
+.rule-status-card:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.18);
+}
+
+.task-check input:focus-visible + span {
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.18);
+  border-color: rgba(125, 211, 252, 0.55);
+}
+
+@media (hover: hover) {
+  .stat-card:hover,
+  .metric-box:hover,
+  .goal-card:hover,
+  .mini-stat:hover,
+  .calendar-stat-card:hover,
+  .calendar-week-summary:hover {
+    transform: translateY(-2px);
+    border-color: rgba(125, 211, 252, 0.22);
+    box-shadow: 0 14px 28px rgba(2, 6, 23, 0.18);
+  }
+
+  .task-card:hover,
+  .news-reminder-card:hover,
+  .calendar-day-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(125, 211, 252, 0.26);
+    box-shadow: 0 16px 30px rgba(2, 6, 23, 0.2);
+  }
+
+  .task-card.done:hover {
+    border-color: rgba(74, 222, 128, 0.34);
+  }
+
+  .rule-status-card:hover,
+  .emotion-toggle-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px rgba(2, 6, 23, 0.16);
+  }
+
+  .primary-btn:hover,
+  .secondary-btn:hover,
+  .tiny-btn:hover,
+  .danger-icon:hover,
+  .theme-toggle-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 22px rgba(2, 6, 23, 0.16);
+  }
+
+  .drag-handle:hover {
+    color: #dbeafe;
+    transform: translateY(-1px);
+  }
+}
+
 .curve-tooltip {
   pointer-events: none;
   animation: tooltip-float 0.22s ease-out;
@@ -1482,42 +1556,72 @@ h2 {
 
 .light-mode {
   --light-surface: rgba(255, 255, 255, 0.94);
-  --light-surface-strong: rgba(255, 255, 255, 0.98);
-  --light-surface-muted: rgba(248, 250, 252, 0.92);
-  --light-border: rgba(15, 23, 42, 0.08);
-  --light-border-strong: rgba(148, 163, 184, 0.32);
-  --light-shadow-lg: 0 24px 60px rgba(15, 23, 42, 0.12), 0 8px 24px rgba(148, 163, 184, 0.16);
-  --light-shadow-md: 0 14px 34px rgba(15, 23, 42, 0.08), 0 4px 14px rgba(148, 163, 184, 0.14);
-  --light-shadow-sm: 0 8px 20px rgba(15, 23, 42, 0.06), 0 2px 8px rgba(148, 163, 184, 0.12);
+  --light-surface-strong: rgba(255, 255, 255, 0.99);
+  --light-surface-muted: rgba(255, 255, 255, 0.92);
+  --light-border: rgba(15, 23, 42, 0.07);
+  --light-border-strong: rgba(148, 163, 184, 0.24);
+  --light-shadow-lg: 0 20px 45px rgba(15, 23, 42, 0.08), 0 4px 14px rgba(148, 163, 184, 0.1);
+  --light-shadow-md: 0 14px 28px rgba(15, 23, 42, 0.07), 0 3px 10px rgba(148, 163, 184, 0.08);
+  --light-shadow-sm: 0 8px 18px rgba(15, 23, 42, 0.05), 0 2px 6px rgba(148, 163, 184, 0.08);
   --light-text: #0f172a;
   --light-muted: #475569;
   --light-soft: #64748b;
   --light-accent: #2563eb;
   --light-accent-strong: #1d4ed8;
+  --light-accent-soft: #eff6ff;
+  --light-accent-border: rgba(96, 165, 250, 0.22);
   background:
-    radial-gradient(circle at 12% 12%, rgba(59, 130, 246, 0.18), transparent 26%),
-    radial-gradient(circle at 88% 10%, rgba(14, 165, 233, 0.12), transparent 24%),
-    linear-gradient(180deg, #f8fbff 0%, #eef4fb 48%, #e2eaf3 100%);
+    radial-gradient(circle at 14% 12%, rgba(148, 163, 184, 0.12), transparent 22%),
+    radial-gradient(circle at 86% 8%, rgba(186, 230, 253, 0.2), transparent 20%),
+    linear-gradient(180deg, #f1f5f9 0%, #eef4f8 100%);
   color: var(--light-text);
 }
 
 .light-mode .bg-grid {
   background-image:
-    linear-gradient(rgba(148, 163, 184, 0.12) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+    linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+  background-size: 32px 32px;
+  opacity: 0.55;
 }
 
 .light-mode .auth-bar,
 .light-mode .hero-card,
 .light-mode .panel {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(248, 250, 252, 0.9) 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.94) 100%);
   border-color: var(--light-border);
   box-shadow: var(--light-shadow-lg);
   color: var(--light-text);
 }
 
 .light-mode .auth-bar {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(246, 249, 253, 0.92) 100%);
+  background:
+    radial-gradient(circle at top right, rgba(191, 219, 254, 0.28), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.995) 0%, rgba(248, 250, 252, 0.96) 100%);
+  border-color: rgba(148, 163, 184, 0.18);
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.08), 0 6px 16px rgba(148, 163, 184, 0.1);
+}
+
+.light-mode .hero-card {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(219, 234, 254, 0.6), transparent 26%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.995) 0%, rgba(248, 250, 252, 0.96) 52%, rgba(241, 245, 249, 0.96) 100%);
+  border-color: rgba(148, 163, 184, 0.16);
+  box-shadow: 0 24px 52px rgba(15, 23, 42, 0.1), 0 8px 18px rgba(96, 165, 250, 0.08);
+}
+
+.light-mode .hero-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(37, 99, 235, 0.28), rgba(14, 165, 233, 0.18), transparent 78%);
+}
+
+.light-mode .hero-stats {
+  gap: 12px;
 }
 
 .light-mode h1 {
@@ -1573,7 +1677,7 @@ h2 {
 }
 
 .light-mode .metric-box {
-  background: linear-gradient(180deg, rgba(241, 248, 255, 0.98) 0%, rgba(255, 255, 255, 0.96) 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(255, 255, 255, 0.94) 100%);
 }
 
 .light-mode .goal-card strong {
@@ -1585,14 +1689,28 @@ h2 {
 }
 
 .light-mode .market-badge {
-  background: linear-gradient(180deg, rgba(219, 234, 254, 0.95) 0%, rgba(239, 246, 255, 0.95) 100%);
-  border-color: rgba(96, 165, 250, 0.24);
+  background: linear-gradient(180deg, rgba(239, 246, 255, 0.98) 0%, rgba(219, 234, 254, 0.94) 100%);
+  border-color: var(--light-accent-border);
   box-shadow: var(--light-shadow-sm);
-  color: #1e3a8a;
+  color: var(--light-accent-strong);
+}
+
+.light-mode .sync-status {
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.96) 0%, rgba(241, 245, 249, 0.94) 100%);
+  border-color: rgba(148, 163, 184, 0.2);
+  box-shadow: var(--light-shadow-sm);
+}
+
+.light-mode .sync-status-copy strong {
+  color: var(--light-text);
+}
+
+.light-mode .sync-status-copy span {
+  color: var(--light-muted);
 }
 
 .light-mode .task-card {
-  background: linear-gradient(180deg, var(--light-surface) 0%, rgba(244, 247, 251, 0.96) 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.94) 100%);
   border-color: var(--light-border);
   box-shadow: var(--light-shadow-sm);
   color: var(--light-text);
@@ -1655,17 +1773,17 @@ h2 {
 .light-mode .calendar-weekday,
 .light-mode .calendar-week-summary,
 .light-mode .calendar-stat-card {
-  background: linear-gradient(180deg, var(--light-surface-strong) 0%, rgba(244, 247, 251, 0.94) 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.94) 100%);
 }
 
 .light-mode .calendar-month-chip {
-  background: linear-gradient(180deg, rgba(239, 246, 255, 0.98) 0%, rgba(219, 234, 254, 0.92) 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.95) 100%);
   border-color: rgba(96, 165, 250, 0.22);
   box-shadow: 0 12px 28px rgba(37, 99, 235, 0.14), 0 3px 10px rgba(148, 163, 184, 0.12);
 }
 
 .light-mode .calendar-weekday {
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.9);
   border-style: solid;
 }
 
@@ -1698,7 +1816,7 @@ h2 {
 }
 
 .light-mode .calendar-day-card {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(244, 247, 251, 0.94) 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.94) 100%);
 }
 
 .light-mode .calendar-day-empty {
@@ -1813,6 +1931,25 @@ h2 {
   box-shadow: var(--light-shadow-sm);
 }
 
+.light-mode button:focus-visible,
+.light-mode input:focus-visible,
+.light-mode select:focus-visible,
+.light-mode .drag-handle:focus-visible,
+.light-mode .danger-icon:focus-visible,
+.light-mode .tiny-btn:focus-visible,
+.light-mode .primary-btn:focus-visible,
+.light-mode .secondary-btn:focus-visible,
+.light-mode .theme-toggle-btn:focus-visible,
+.light-mode .emotion-toggle-btn:focus-visible,
+.light-mode .rule-status-card:focus-visible {
+  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.18);
+}
+
+.light-mode .task-check input:focus-visible + span {
+  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.18);
+  border-color: rgba(37, 99, 235, 0.4);
+}
+
 .light-mode .hero-text {
   color: var(--light-muted);
 }
@@ -1823,7 +1960,7 @@ h2 {
 
 .light-mode .emotion-check-card {
   border-color: var(--light-border);
-  background: linear-gradient(180deg, var(--light-surface) 0%, rgba(244, 247, 251, 0.96) 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.94) 100%);
   box-shadow: var(--light-shadow-sm);
 }
 
@@ -1837,7 +1974,7 @@ h2 {
 
 .light-mode .rule-check-card {
   border-color: var(--light-border);
-  background: linear-gradient(180deg, var(--light-surface) 0%, rgba(244, 247, 251, 0.96) 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.94) 100%);
   box-shadow: var(--light-shadow-sm);
 }
 
@@ -1854,7 +1991,7 @@ h2 {
 }
 
 .light-mode .rule-check-label {
-  color: #0284c7;
+  color: var(--light-accent);
 }
 
 .light-mode .rule-check-copy strong {
@@ -1866,7 +2003,7 @@ h2 {
 }
 
 .light-mode .rule-status-card {
-  background: linear-gradient(180deg, var(--light-surface-strong) 0%, rgba(244, 247, 251, 0.94) 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.94) 100%);
   border-color: var(--light-border);
   box-shadow: var(--light-shadow-sm);
   color: var(--light-text);
@@ -1905,7 +2042,7 @@ h2 {
 }
 
 .light-mode .emotion-check-label {
-  color: #0284c7;
+  color: var(--light-accent);
 }
 
 .light-mode .emotion-check-copy strong {
@@ -1965,9 +2102,9 @@ h2 {
 }
 
 .light-mode .secondary-btn {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(241, 245, 249, 0.98) 100%);
-  color: var(--light-text);
-  border-color: rgba(148, 163, 184, 0.32);
+  background: linear-gradient(180deg, rgba(239, 246, 255, 0.96) 0%, rgba(255, 255, 255, 0.98) 100%);
+  color: var(--light-accent-strong);
+  border-color: var(--light-accent-border);
 }
 
 .light-mode .secondary-btn-muted {
@@ -1988,7 +2125,7 @@ h2 {
 }
 
 .light-mode .news-reminder-card {
-  background: linear-gradient(180deg, var(--light-surface) 0%, rgba(244, 247, 251, 0.96) 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.94) 100%);
   border-color: var(--light-border);
   box-shadow: var(--light-shadow-sm);
 }
@@ -2006,9 +2143,9 @@ h2 {
 }
 
 .light-mode .news-reminder-badge {
-  background: rgba(219, 234, 254, 0.9);
+  background: rgba(219, 234, 254, 0.92);
   color: var(--light-accent-strong);
-  border-color: rgba(96, 165, 250, 0.18);
+  border-color: var(--light-accent-border);
 }
 
 .light-mode .table-wrap {
@@ -2036,9 +2173,9 @@ h2 {
 }
 
 .light-mode .tiny-btn {
-  background: rgba(219, 234, 254, 0.88);
+  background: linear-gradient(180deg, rgba(239, 246, 255, 0.98) 0%, rgba(219, 234, 254, 0.9) 100%);
   color: var(--light-accent-strong);
-  border: 1px solid rgba(96, 165, 250, 0.16);
+  border: 1px solid var(--light-accent-border);
   box-shadow: 0 6px 16px rgba(59, 130, 246, 0.12);
 }
 
@@ -2049,9 +2186,9 @@ h2 {
 }
 
 .light-mode .pill {
-  background: rgba(219, 234, 254, 0.86);
+  background: linear-gradient(180deg, rgba(239, 246, 255, 0.98) 0%, rgba(219, 234, 254, 0.9) 100%);
   color: var(--light-accent-strong);
-  border-color: rgba(96, 165, 250, 0.18);
+  border-color: var(--light-accent-border);
 }
 
 .light-mode .task-limit-note {
@@ -2090,7 +2227,7 @@ h2 {
 
 .light-mode input,
 .light-mode select {
-  background: rgba(255, 255, 255, 0.96);
+  background: rgba(255, 255, 255, 0.98);
   border-color: rgba(148, 163, 184, 0.34);
   box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.05);
   color: var(--light-text);
@@ -2098,14 +2235,14 @@ h2 {
 
 .light-mode input:focus,
 .light-mode select:focus {
-  border-color: rgba(37, 99, 235, 0.4);
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12), inset 0 1px 2px rgba(15, 23, 42, 0.04);
+  border-color: rgba(37, 99, 235, 0.42);
+  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.16), inset 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .light-mode .theme-toggle-btn {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(241, 245, 249, 0.98) 100%);
-  color: var(--light-text);
-  border: 1px solid rgba(148, 163, 184, 0.32);
+  background: linear-gradient(180deg, rgba(239, 246, 255, 0.96) 0%, rgba(255, 255, 255, 0.98) 100%);
+  color: var(--light-accent-strong);
+  border: 1px solid var(--light-accent-border);
   border-radius: 14px;
   padding: 8px 12px;
   cursor: pointer;
@@ -2123,7 +2260,7 @@ h2 {
 
 .light-mode .secondary-btn:hover,
 .light-mode .theme-toggle-btn:hover {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 1) 0%, rgba(237, 242, 247, 0.98) 100%);
+  background: linear-gradient(180deg, rgba(219, 234, 254, 0.95) 0%, rgba(239, 246, 255, 0.98) 100%);
   box-shadow: var(--light-shadow-md);
 }
 
@@ -2133,6 +2270,46 @@ h2 {
 
 .light-mode .tiny-btn:hover {
   box-shadow: 0 10px 22px rgba(59, 130, 246, 0.16);
+}
+
+@media (hover: hover) {
+  .light-mode .stat-card:hover,
+  .light-mode .metric-box:hover,
+  .light-mode .goal-card:hover,
+  .light-mode .mini-stat:hover,
+  .light-mode .calendar-stat-card:hover,
+  .light-mode .calendar-week-summary:hover {
+    border-color: rgba(96, 165, 250, 0.24);
+    box-shadow: 0 16px 30px rgba(148, 163, 184, 0.16), 0 6px 14px rgba(37, 99, 235, 0.08);
+  }
+
+  .light-mode .task-card:hover,
+  .light-mode .news-reminder-card:hover,
+  .light-mode .calendar-day-card:hover {
+    border-color: rgba(96, 165, 250, 0.28);
+    box-shadow: 0 18px 34px rgba(148, 163, 184, 0.18), 0 8px 16px rgba(37, 99, 235, 0.08);
+  }
+
+  .light-mode .rule-status-card:hover,
+  .light-mode .emotion-toggle-btn:hover {
+    border-color: rgba(96, 165, 250, 0.26);
+    box-shadow: 0 14px 28px rgba(148, 163, 184, 0.16), 0 6px 14px rgba(37, 99, 235, 0.08);
+  }
+
+  .light-mode .drag-handle:hover {
+    color: var(--light-accent-strong);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @media (max-width: 1100px) {
