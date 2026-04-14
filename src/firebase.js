@@ -7,7 +7,11 @@ import {
   indexedDBLocalPersistence,
   initializeAuth
 } from "firebase/auth";
-import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentSingleTabManager
+} from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -25,16 +29,16 @@ const auth = initializeAuth(app, {
   persistence: [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence],
   popupRedirectResolver: browserPopupRedirectResolver
 });
-const db = getFirestore(app);
+const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentSingleTabManager()
+  })
+});
 const googleProvider = new GoogleAuthProvider();
 
 googleProvider.addScope("email");
 googleProvider.setCustomParameters({
   prompt: "select_account"
-});
-
-enableIndexedDbPersistence(db).catch(() => {
-  // Ignorar en desarrollo si ya hay otra pestaña abierta o el navegador no lo soporta
 });
 
 export { auth, db, googleProvider };

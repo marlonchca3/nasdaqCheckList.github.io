@@ -454,18 +454,8 @@ export default {
       trades.forEach(trade => {
         if (!trade.date) return;
 
-        const currentStatus = dayStatusMap.get(trade.date);
-        // Priority: missed > partial > followed (but followed doesn't override partial)
-        if (trade.ruleStatus === "missed") {
-          dayStatusMap.set(trade.date, "missed");
-        } else if (trade.ruleStatus === "partial") {
-          if (currentStatus !== "missed") {
-            dayStatusMap.set(trade.date, "partial");
-          }
-        } else if (trade.ruleStatus === "followed") {
-          if (!currentStatus) {
-            dayStatusMap.set(trade.date, "followed");
-          }
+        if (["followed", "partial", "missed"].includes(trade.ruleStatus)) {
+          dayStatusMap.set(trade.date, trade.ruleStatus);
         }
       });
 
@@ -2226,7 +2216,7 @@ export default {
       this.justSavedLocallyAt = Date.now();
       this.applyTradeCooldown(tradePayload.ruleStatus);
       this.resetTradeForm();
-      this.saveToCloud();
+      // El watcher de trades se encarga de saveToCloud y scheduleCloudSave
     },
 
     editTrade(trade) {
