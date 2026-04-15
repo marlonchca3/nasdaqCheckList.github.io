@@ -446,25 +446,28 @@ export default {
         return !Number.isNaN(tradeDate.getTime()) && tradeDate >= start && tradeDate <= end;
       });
 
-      const followed = trades.filter(trade => trade.ruleStatus === "followed").length;
-      const partial = trades.filter(trade => trade.ruleStatus === "partial").length;
-      const missed = trades.filter(trade => trade.ruleStatus === "missed").length;
+      let followed = trades.filter(trade => trade.ruleStatus === "followed").length;
+      let partial = trades.filter(trade => trade.ruleStatus === "partial").length;
+      let missed = trades.filter(trade => trade.ruleStatus === "missed").length;
 
-      const dayStatusMap = new Map();
-      trades.forEach(trade => {
-        if (!trade.date) return;
+      const previewStatus = !this.isEditing ? this.normalizeRuleStatus(this.tradeForm.ruleStatus) : "";
+      const previewDate = new Date(`${this.tradeForm.date || ""}T00:00:00`);
+      const shouldPreviewCurrentSelection = (
+        previewStatus
+        && !Number.isNaN(previewDate.getTime())
+        && previewDate >= start
+        && previewDate <= end
+      );
 
-        if (["followed", "partial", "missed"].includes(trade.ruleStatus)) {
-          dayStatusMap.set(trade.date, trade.ruleStatus);
-        }
-      });
+      if (shouldPreviewCurrentSelection) {
+        if (previewStatus === "followed") followed += 1;
+        if (previewStatus === "partial") partial += 1;
+        if (previewStatus === "missed") missed += 1;
+      }
 
-      const followedDays = Array.from(dayStatusMap.values()).filter(status => status === "followed").length;
-      const partialDays = Array.from(dayStatusMap.values()).filter(status => status === "partial").length;
-      const missedDays = Array.from(dayStatusMap.values()).filter(status => status === "missed").length;
-
-      const rawPercent = followedDays * 20 + partialDays * 10 - missedDays * 20;
+      const rawPercent = followed * 20 + partial * 10 - missed * 20;
       const percent = Math.min(Math.max(rawPercent, 0), 100);
+      const previewLabel = shouldPreviewCurrentSelection ? " · vista previa activa" : "";
 
       return {
         trades,
@@ -472,7 +475,7 @@ export default {
         partial,
         missed,
         percent,
-        label: `${followedDays} dias +20 · ${partialDays} dias +10 · ${missedDays} dias -20`
+        label: `${followed} segui +20 · ${partial} parcial +10 · ${missed} fallo -20${previewLabel}`
       };
     },
 
