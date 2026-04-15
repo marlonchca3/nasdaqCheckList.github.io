@@ -89,6 +89,7 @@ export default {
         time: ""
       },
       newsReminders: [],
+      pendingRuleSelections: [],
 
       tradeForm: {
         date: new Date().toISOString().slice(0, 10),
@@ -450,24 +451,16 @@ export default {
       let partial = trades.filter(trade => trade.ruleStatus === "partial").length;
       let missed = trades.filter(trade => trade.ruleStatus === "missed").length;
 
-      const previewStatus = !this.isEditing ? this.normalizeRuleStatus(this.tradeForm.ruleStatus) : "";
-      const previewDate = new Date(`${this.tradeForm.date || ""}T00:00:00`);
-      const shouldPreviewCurrentSelection = (
-        previewStatus
-        && !Number.isNaN(previewDate.getTime())
-        && previewDate >= start
-        && previewDate <= end
-      );
+      const currentWeekKey = this.getWeekKeyForDate(today.toISOString().slice(0, 10));
+      const pendingSelections = this.pendingRuleSelections.filter(selection => selection.weekKey === currentWeekKey);
 
-      if (shouldPreviewCurrentSelection) {
-        if (previewStatus === "followed") followed += 1;
-        if (previewStatus === "partial") partial += 1;
-        if (previewStatus === "missed") missed += 1;
-      }
+      followed += pendingSelections.filter(selection => selection.status === "followed").length;
+      partial += pendingSelections.filter(selection => selection.status === "partial").length;
+      missed += pendingSelections.filter(selection => selection.status === "missed").length;
 
       const rawPercent = followed * 20 + partial * 10 - missed * 20;
       const percent = Math.min(Math.max(rawPercent, 0), 100);
-      const previewLabel = shouldPreviewCurrentSelection ? " · vista previa activa" : "";
+      const previewLabel = pendingSelections.length ? ` · ${pendingSelections.length} toque(s)` : "";
 
       return {
         trades,
@@ -995,6 +988,7 @@ export default {
         this.taskVoiceMuted = Boolean(data.taskVoiceMuted);
         this.newsReminders = this.normalizeNewsReminders(data.newsReminders);
         this.newsAlertsEnabled = data.newsAlertsEnabled !== false;
+        this.pendingRuleSelections = this.normalizePendingRuleSelections(data.pendingRuleSelections);
 
         this.isHydratingFromCloud = false;
         this.syncState = "synced";
@@ -1048,6 +1042,47 @@ export default {
         resultR: 1,
         note: ""
       };
+    },
+
+    getWeekKeyForDate(dateValue = new Date().toISOString().slice(0, 10)) {
+      const baseDate = new Date(`${dateValue}T00:00:00`);
+      if (Number.isNaN(baseDate.getTime())) {
+        return new Date().toISOString().slice(0, 10);
+      }
+
+      const day = baseDate.getDay();
+      const mondayOffset = day === 0 ? -6 : 1 - day;
+      const monday = new Date(baseDate);
+      monday.setDate(baseDate.getDate() + mondayOffset);
+      return monday.toISOString().slice(0, 10);
+    },
+
+    normalizePendingRuleSelections(rawSelections) {
+      if (!Array.isArray(rawSelections)) return [];
+
+      return rawSelections
+        .map((selection, index) => ({
+          id: String(selection?.id || `${Date.now()}-${index}`),
+          weekKey: /^\d{4}-\d{2}-\d{2}$/.test(selection?.weekKey || "")
+            ? selection.weekKey
+            : this.getWeekKeyForDate(),
+          status: this.normalizeRuleStatus(selection?.status)
+        }))
+        .filter(selection => selection.status);
+    },
+
+    persistPendingRuleSelections() {
+      if (!this.isHydratingFromCloud && !this.isLoadingLocalData) {
+        this.justSavedLocallyAt = Date.now();
+      }
+
+      try {
+        localStorage.setItem("nasdaq_pending_rule_selections", JSON.stringify(this.pendingRuleSelections));
+      } catch (error) {
+        console.error("Error al guardar los toques de disciplina:", error);
+      }
+
+      this.scheduleCloudSave();
     },
 
     normalizeNewsReminder(rawReminder) {
@@ -1425,10 +1460,25 @@ export default {
     },
 
     setTradeRuleStatus(status) {
+      const normalizedStatus = this.normalizeRuleStatus(status);
+
       this.tradeForm = {
         ...this.tradeForm,
-        ruleStatus: this.normalizeRuleStatus(status)
+        ruleStatus: normalizedStatus
       };
+
+      if (!normalizedStatus) return;
+
+      this.pendingRuleSelections = [
+        ...this.pendingRuleSelections,
+        {
+          id: `${Date.now()}-${Math.random()}`,
+          weekKey: this.getWeekKeyForDate(this.tradeForm.date),
+          status: normalizedStatus
+        }
+      ];
+
+      this.persistPendingRuleSelections();
     },
 
     getRuleStatusLabel(status) {
@@ -1918,6 +1968,11 @@ export default {
         if (savedNewsAlertsEnabled) {
           this.newsAlertsEnabled = JSON.parse(savedNewsAlertsEnabled) !== false;
         }
+
+        const savedPendingRuleSelections = localStorage.getItem("nasdaq_pending_rule_selections");
+        if (savedPendingRuleSelections) {
+          this.pendingRuleSelections = this.normalizePendingRuleSelections(JSON.parse(savedPendingRuleSelections));
+        }
       } catch (error) {
         console.error("Error al leer datos locales:", error);
       } finally {
@@ -2062,6 +2117,7 @@ export default {
             taskVoiceMuted: this.taskVoiceMuted,
             newsReminders: this.newsReminders,
             newsAlertsEnabled: this.newsAlertsEnabled,
+            pendingRuleSelections: this.pendingRuleSelections,
             rValue: this.safeRValue,
             goalUSD: this.safeGoalUSD,
             updatedAt: serverTimestamp(),
@@ -2214,6 +2270,16 @@ export default {
         );
       } else {
         this.trades = [...this.trades, tradePayload];
+      }
+
+      const tradeWeekKey = this.getWeekKeyForDate(tradePayload.date);
+      const pendingIndex = this.pendingRuleSelections.findIndex(selection => (
+        selection.weekKey === tradeWeekKey && selection.status === tradePayload.ruleStatus
+      ));
+
+      if (pendingIndex !== -1) {
+        this.pendingRuleSelections = this.pendingRuleSelections.filter((_, index) => index !== pendingIndex);
+        this.persistPendingRuleSelections();
       }
 
       this.justSavedLocallyAt = Date.now();
