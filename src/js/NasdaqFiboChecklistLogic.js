@@ -234,11 +234,23 @@ export default {
     },
 
     pomodoroStatusLabel() {
+      this.currentTime;
+
       if (this.pomodoroGoalReached && !this.pomodoro.isRunning) {
         return "Objetivo diario cumplido";
       }
 
       if (this.pomodoro.isRunning) {
+        const scheduledStartAt = Number(this.pomodoro.lastTickAt) || 0;
+
+        if (scheduledStartAt > Date.now()) {
+          return `Programado para ${new Date(scheduledStartAt).toLocaleTimeString("es-PE", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit"
+          })}`;
+        }
+
         return `Sesión activa · bloque ${this.pomodoro.completedFocusSessions + 1}`;
       }
 
@@ -1658,6 +1670,28 @@ export default {
       return "Descanso terminado. Vuelve a concentrarte.";
     },
 
+    isPomodoroAlignedStartTime(date = new Date()) {
+      return date.getMinutes() % 5 === 0 && date.getSeconds() === 0;
+    },
+
+    getNextPomodoroAlignedStart(now = new Date()) {
+      const nextStart = new Date(now);
+      nextStart.setMilliseconds(0);
+
+      if (this.isPomodoroAlignedStartTime(nextStart)) {
+        return nextStart.getTime();
+      }
+
+      nextStart.setSeconds(0, 0);
+      nextStart.setMinutes(nextStart.getMinutes() + 1);
+
+      while (nextStart.getMinutes() % 5 !== 0) {
+        nextStart.setMinutes(nextStart.getMinutes() + 1);
+      }
+
+      return nextStart.getTime();
+    },
+
     tickPomodoro() {
       if (!this.pomodoro.isRunning) return;
 
@@ -1718,11 +1752,18 @@ export default {
           lastTickAt: null
         };
       } else {
+        const scheduledStartAt = this.getNextPomodoroAlignedStart();
+        const waitingForAlignedStart = scheduledStartAt > Date.now();
+
         this.pomodoro = {
           ...this.pomodoro,
           isRunning: true,
-          lastTickAt: Date.now()
+          lastTickAt: scheduledStartAt
         };
+
+        if (waitingForAlignedStart) {
+          this.speakText("Pomodoro programado para iniciar en el próximo bloque exacto de 5 minutos.");
+        }
       }
 
       this.persistPomodoro({ forceLocal: true, forceCloud: true });
