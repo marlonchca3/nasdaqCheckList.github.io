@@ -1,5 +1,5 @@
 import draggable from "vuedraggable";
-import { auth, db, googleProvider } from "../firebase";
+import { auth, db, googleProvider, firebaseEnabled, firebaseInitError } from "../firebase";
 import {
   getRedirectResult,
   signInWithPopup,
@@ -946,6 +946,17 @@ export default {
       this.isDarkMode = savedTheme === 'dark';
     }
 
+    if (!firebaseEnabled || !auth || !db) {
+      this.authReady = true;
+      this.isSigningIn = false;
+      this.syncState = "local";
+      this.authInfoMessage = "Modo local activo. La sincronización en la nube no está disponible en este momento.";
+      if (firebaseInitError) {
+        console.warn("Firebase no disponible:", firebaseInitError);
+      }
+      return;
+    }
+
     this.unsubscribeAuth = onAuthStateChanged(auth, currentUser => {
       this.user = currentUser;
       this.authReady = true;
@@ -1671,7 +1682,11 @@ export default {
     },
 
     isPomodoroAlignedStartTime(date = new Date()) {
-      return date.getMinutes() % 5 === 0 && date.getSeconds() === 0;
+      const minutes = date.getMinutes();
+      const seconds = date.getSeconds();
+      const minuteEndsInZeroOrFive = minutes % 10 === 0 || minutes % 10 === 5;
+
+      return minuteEndsInZeroOrFive && seconds === 0;
     },
 
     getNextPomodoroAlignedStart(now = new Date()) {
@@ -1682,12 +1697,11 @@ export default {
         return nextStart.getTime();
       }
 
-      nextStart.setSeconds(0, 0);
-      nextStart.setMinutes(nextStart.getMinutes() + 1);
+      const remainder = nextStart.getMinutes() % 5;
+      const minutesToAdd = remainder === 0 ? 5 : 5 - remainder;
 
-      while (nextStart.getMinutes() % 5 !== 0) {
-        nextStart.setMinutes(nextStart.getMinutes() + 1);
-      }
+      nextStart.setSeconds(0, 0);
+      nextStart.setMinutes(nextStart.getMinutes() + minutesToAdd);
 
       return nextStart.getTime();
     },
@@ -1762,7 +1776,7 @@ export default {
         };
 
         if (waitingForAlignedStart) {
-          this.speakText("Pomodoro programado para iniciar en el próximo bloque exacto de 5 minutos.");
+          this.speakText("Pomodoro programado para iniciar cuando el reloj marque minuto terminado en 0 o 5, con segundo 00.");
         }
       }
 
@@ -1771,12 +1785,18 @@ export default {
 
     skipPomodoroPhase() {
       const nextPomodoro = this.advancePomodoroState(this.pomodoro);
+      const nextAlignedStartAt = this.pomodoro.isRunning ? this.getNextPomodoroAlignedStart() : null;
+      const waitingForAlignedStart = Boolean(nextAlignedStartAt && nextAlignedStartAt > Date.now());
 
       this.pomodoro = {
         ...nextPomodoro,
         isRunning: this.pomodoro.isRunning,
-        lastTickAt: this.pomodoro.isRunning ? Date.now() : null
+        lastTickAt: nextAlignedStartAt
       };
+
+      if (waitingForAlignedStart) {
+        this.speakText("Siguiente bloque programado para el próximo minuto terminado en 0 o 5, con segundo 00.");
+      }
 
       this.persistPomodoro({ forceLocal: true, forceCloud: true });
     },
@@ -1896,6 +1916,8 @@ export default {
     },
 
     async handleRedirectResult() {
+      if (!firebaseEnabled || !auth) return;
+
       try {
         const result = await getRedirectResult(auth);
         if (result?.user) {
@@ -2069,6 +2091,12 @@ export default {
       this.authInfoMessage = "";
       this.isSigningIn = true;
 
+      if (!firebaseEnabled || !auth || !googleProvider) {
+        this.isSigningIn = false;
+        this.authErrorMessage = "Firebase no está configurado correctamente. La app seguirá funcionando en modo local.";
+        return;
+      }
+
       try {
         if (this.shouldUseRedirectAuth() && this.isInAppBrowser()) {
           this.authErrorMessage = "Ese navegador integrado no soporta bien el login con Google. Abre la app en Chrome, Edge o Safari usando el navegador normal del celular.";
@@ -2119,6 +2147,8 @@ export default {
     },
 
     async signOutUser() {
+      if (!firebaseEnabled || !auth) return;
+
       try {
         await signOut(auth);
       } catch (error) {
@@ -2127,7 +2157,7 @@ export default {
     },
 
     scheduleCloudSave() {
-      if (!this.user || this.isHydratingFromCloud) return;
+      if (!firebaseEnabled || !db || !this.user || this.isHydratingFromCloud) return;
 
       if (this.saveTimer) clearTimeout(this.saveTimer);
 
@@ -2136,7 +2166,7 @@ export default {
     },
 
     async saveToCloud() {
-      if (!this.user || this.isHydratingFromCloud) return;
+      if (!firebaseEnabled || !db || !this.user || this.isHydratingFromCloud) return;
 
       this.isHydratingFromCloud = true;
       this.syncState = "saving";

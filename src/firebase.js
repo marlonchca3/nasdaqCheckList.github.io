@@ -23,22 +23,47 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
-const app = initializeApp(firebaseConfig);
-
-const auth = initializeAuth(app, {
-  persistence: [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence],
-  popupRedirectResolver: browserPopupRedirectResolver
-});
-const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({
-    tabManager: persistentSingleTabManager()
-  })
-});
-const googleProvider = new GoogleAuthProvider();
-
-googleProvider.addScope("email");
-googleProvider.setCustomParameters({
-  prompt: "select_account"
+const requiredFirebaseKeys = ["apiKey", "authDomain", "projectId", "appId"];
+const hasValidFirebaseConfig = requiredFirebaseKeys.every(key => {
+  const value = firebaseConfig[key];
+  return typeof value === "string" && value.trim() && value !== "undefined";
 });
 
-export { auth, db, googleProvider };
+let auth = null;
+let db = null;
+let googleProvider = null;
+let firebaseEnabled = false;
+let firebaseInitError = "";
+
+if (hasValidFirebaseConfig) {
+  try {
+    const app = initializeApp(firebaseConfig);
+
+    auth = initializeAuth(app, {
+      persistence: [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence],
+      popupRedirectResolver: browserPopupRedirectResolver
+    });
+
+    db = initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentSingleTabManager()
+      })
+    });
+
+    googleProvider = new GoogleAuthProvider();
+    googleProvider.addScope("email");
+    googleProvider.setCustomParameters({
+      prompt: "select_account"
+    });
+
+    firebaseEnabled = true;
+  } catch (error) {
+    firebaseInitError = error?.message || "No se pudo inicializar Firebase.";
+    console.warn("Firebase deshabilitado. La app seguirá en modo local.", error);
+  }
+} else {
+  firebaseInitError = "Falta configuración de Firebase.";
+  console.warn("Firebase deshabilitado. Faltan variables VITE_FIREBASE_*.");
+}
+
+export { auth, db, googleProvider, firebaseEnabled, firebaseInitError };
