@@ -23,6 +23,9 @@
           <p v-if="authErrorMessage" class="auth-feedback auth-feedback-error">
             {{ authErrorMessage }}
           </p>
+          <p class="auth-feedback auth-feedback-info">
+            Privacidad: no guardes contraseñas, tarjetas ni datos bancarios en esta app.
+          </p>
         </div>
 
         <div class="auth-right">
@@ -41,6 +44,10 @@
 
           <button v-else class="secondary-btn" @click="signOutUser">
             Cerrar sesión
+          </button>
+
+          <button class="secondary-btn" @click="clearLocalAppData">
+            Borrar datos guardados
           </button>
         </div>
       </section>

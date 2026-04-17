@@ -7,7 +7,7 @@ import {
   signOut,
   onAuthStateChanged
 } from "firebase/auth";
-import { doc, setDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
+import { deleteField, doc, setDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
 
 export default {
   name: "NasdaqFiboChecklist",
@@ -2045,6 +2045,51 @@ export default {
       this.checkNasdaqNewsAlerts(new Date());
     },
 
+    clearLocalAppData() {
+      const confirmed = window.confirm(
+        "Esto borrará los datos guardados por esta app en este navegador. ¿Deseas continuar?"
+      );
+
+      if (!confirmed) return;
+
+      const storageKeys = [
+        "nasdaq_tasks_professional",
+        "nasdaq_trades_curve",
+        "nasdaq_r_value_only_tasks",
+        "nasdaq_goal_usd_only_tasks",
+        "nasdaq_pomodoro_4h",
+        "nasdaq_emotion_checklist",
+        "nasdaq_trade_cooldown",
+        "nasdaq_task_voice_muted",
+        "nasdaq_news_reminders",
+        "nasdaq_news_alerts_enabled",
+        "nasdaq_pending_rule_selections"
+      ];
+
+      storageKeys.forEach(key => localStorage.removeItem(key));
+
+      this.tasks = [];
+      this.trades = [];
+      this.newTask = "";
+      this.rValue = 50;
+      this.goalUSD = 3000;
+      this.pomodoro = this.getDefaultPomodoroState();
+      this.pomodoroGoalCelebrated = false;
+      this.emotionChecklist = this.getDefaultEmotionChecklist();
+      this.tradeCooldown = this.getDefaultTradeCooldown();
+      this.taskVoiceMuted = false;
+      this.newsReminders = [];
+      this.newsAlertsEnabled = true;
+      this.pendingRuleSelections = [];
+      this.resetTradeForm({ preserveSelection: false });
+      this.lastCloudSyncAt = null;
+      this.syncState = this.user && firebaseEnabled ? "pending" : "local";
+      this.authErrorMessage = "";
+      this.authInfoMessage = "Los datos guardados de esta app fueron borrados de este navegador.";
+
+      this.scheduleCloudSave();
+    },
+
     getSafeR(value) {
       const n = Number(value);
       return Number.isFinite(n) ? n : 0;
@@ -2189,8 +2234,8 @@ export default {
             rValue: this.safeRValue,
             goalUSD: this.safeGoalUSD,
             updatedAt: serverTimestamp(),
-            userEmail: this.user.email || "",
-            userName: this.user.displayName || ""
+            userEmail: deleteField(),
+            userName: deleteField()
           },
           { merge: true }
         );
