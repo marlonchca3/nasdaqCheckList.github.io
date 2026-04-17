@@ -2090,11 +2090,8 @@ export default {
 
       if (this.saveTimer) clearTimeout(this.saveTimer);
 
-       this.syncState = "pending";
-
-      this.saveTimer = setTimeout(() => {
-        this.saveToCloud();
-      }, 500);
+      // Guardar inmediatamente en lugar de esperar 500ms
+      this.saveToCloud();
     },
 
     async saveToCloud() {
