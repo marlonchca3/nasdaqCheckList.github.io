@@ -76,7 +76,7 @@ En GitHub solo debes verificar esto una vez:
 
 La URL esperada de publicación es:
 
-- <https://marlonchca3.github.io/nasdaqCheckList.gitgub.io/>
+- <https://marlonchca3.github.io/nasdaqCheckList.github.io/>
 
 ### Compile and Hot-Reload for Development
 
