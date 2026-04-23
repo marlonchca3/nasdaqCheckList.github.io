@@ -2152,16 +2152,20 @@ export default {
       }
 
       try {
-        if (this.shouldUseRedirectAuth() && this.isInAppBrowser()) {
-          this.authErrorMessage = "Ese navegador integrado no soporta bien el login con Google. Abre la app en Chrome, Edge o Safari usando el navegador normal del celular.";
+        if (this.isInAppBrowser()) {
+          this.authErrorMessage = "Ese navegador integrado no soporta bien el login con Google. Abre la app en Chrome o Safari usando el navegador normal del celular.";
+          this.isSigningIn = false;
           return;
         }
 
         if (this.shouldWarnForMobileLocalAuth()) {
-          this.authErrorMessage = "En celular no podrás iniciar sesión usando la URL local de tu laptop. Abre la app desde GitHub Pages: https://marlonchca3.github.io/nasdaqCheckList.gitgub.io/.";
+          this.authErrorMessage = "En celular no podrás iniciar sesión usando la URL local de tu laptop. Abre la app desde GitHub Pages: https://marlonchca3.github.io/nasdaqCheckList.github.io/.";
+          this.isSigningIn = false;
           return;
         }
 
+        // En celular usar redirect (los popups son bloqueados por móviles)
+        // En escritorio usar popup
         if (this.shouldUseRedirectAuth()) {
           redirectStarted = true;
           this.authInfoMessage = "Redirigiendo a Google para iniciar sesión...";
@@ -2208,6 +2212,11 @@ export default {
       } catch (error) {
         console.error("Error al cerrar sesión:", error);
       }
+    },
+
+    async forceSyncNow() {
+      if (this.saveTimer) clearTimeout(this.saveTimer);
+      await this.saveToCloud();
     },
 
     scheduleCloudSave() {

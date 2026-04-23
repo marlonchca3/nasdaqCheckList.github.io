@@ -46,6 +46,15 @@
             Cerrar sesión
           </button>
 
+          <button
+            v-if="user"
+            class="secondary-btn"
+            :disabled="syncState === 'saving'"
+            @click="forceSyncNow"
+          >
+            {{ syncState === 'saving' ? 'Subiendo...' : '☁️ Subir a nube' }}
+          </button>
+
           <button class="secondary-btn" @click="clearLocalAppData">
             Borrar datos guardados
           </button>
