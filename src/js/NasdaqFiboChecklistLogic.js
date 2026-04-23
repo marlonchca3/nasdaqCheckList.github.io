@@ -994,16 +994,25 @@ export default {
           return;
         }
 
-        const now = Date.now();
-        if (!isInitialSnapshot && now - this.justSavedLocallyAt < 3000) return;
-
         const data = snapshot.data();
+
+        const incomingRValue = Number(data.rValue) > 0 ? Number(data.rValue) : 50;
+        const incomingGoalUSD = Number(data.goalUSD) > 0 ? Number(data.goalUSD) : 3000;
+
+        const now = Date.now();
+        const recentLocalWrite = !isInitialSnapshot && now - this.justSavedLocallyAt < 3000;
+        const remoteHasNewNumbers =
+          incomingRValue !== Number(this.rValue) ||
+          incomingGoalUSD !== Number(this.goalUSD);
+
+        if (recentLocalWrite && !remoteHasNewNumbers) return;
+
         this.isHydratingFromCloud = true;
 
         this.tasks = this.normalizeTasks(data.tasks);
         this.trades = this.normalizeTrades(data.trades);
-        this.rValue = Number(data.rValue) > 0 ? Number(data.rValue) : 50;
-        this.goalUSD = Number(data.goalUSD) > 0 ? Number(data.goalUSD) : 3000;
+        this.rValue = incomingRValue;
+        this.goalUSD = incomingGoalUSD;
         this.pomodoro = this.normalizePomodoroState(data.pomodoro);
         this.pomodoroGoalCelebrated = this.pomodoro.totalFocusedSeconds >= this.pomodoroTargetSeconds;
         this.emotionChecklist = this.normalizeEmotionChecklist(data.emotionChecklist);
