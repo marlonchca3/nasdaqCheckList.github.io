@@ -2215,8 +2215,10 @@ export default {
 
       if (this.saveTimer) clearTimeout(this.saveTimer);
 
-      // Guardar inmediatamente en lugar de esperar 500ms
-      this.saveToCloud();
+      // Debounce: esperar 3 segundos de inactividad antes de guardar en la nube
+      this.saveTimer = setTimeout(() => {
+        this.saveToCloud();
+      }, 3000);
     },
 
     async saveToCloud() {
