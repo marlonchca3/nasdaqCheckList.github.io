@@ -2139,8 +2139,6 @@ export default {
 
 
     async signInWithGoogle() {
-      let redirectStarted = false;
-
       this.authErrorMessage = "";
       this.authInfoMessage = "";
       this.isSigningIn = true;
@@ -2164,43 +2162,13 @@ export default {
           return;
         }
 
-        // En celular usar redirect (los popups son bloqueados por móviles)
-        // En escritorio usar popup
-        if (this.shouldUseRedirectAuth()) {
-          redirectStarted = true;
-          this.authInfoMessage = "Redirigiendo a Google para iniciar sesión...";
-          await signInWithRedirect(auth, googleProvider);
-          return;
-        }
-
-        this.authInfoMessage = "Abriendo Google para iniciar sesión...";
-        await signInWithPopup(auth, googleProvider);
-        this.authInfoMessage = "";
+        // Siempre usar redirect — no carga apis.google.com en la página,
+        // evita errores de DNS/red y funciona en PC y celular
+        this.authInfoMessage = "Redirigiendo a Google para iniciar sesión...";
+        await signInWithRedirect(auth, googleProvider);
       } catch (error) {
-        if (this.shouldFallbackToRedirect(error)) {
-          try {
-            redirectStarted = true;
-            this.authErrorMessage = "";
-            this.authInfoMessage = "El navegador requiere redirección. Abriendo Google...";
-            await signInWithRedirect(auth, googleProvider);
-            return;
-          } catch (redirectError) {
-            this.handleAuthError(
-              redirectError,
-              "No se pudo redirigir a Google para iniciar sesión."
-            );
-            return;
-          }
-        }
-
-        this.handleAuthError(
-          error,
-          "No se pudo iniciar sesión con Google."
-        );
-      } finally {
-        if (!redirectStarted) {
-          this.isSigningIn = false;
-        }
+        this.isSigningIn = false;
+        this.handleAuthError(error, "No se pudo iniciar sesión con Google.");
       }
     },
 
